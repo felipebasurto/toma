@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="color-scheme" content="light">
+<meta name="color-scheme" content="light dark">
 <title>Toma — ⇧⌘4, but for video</title>
 <meta name="description" content="Record a region of your Mac screen and save it as MP4, HEVC or GIF. Free and open source.">
 <link rel="canonical" href="https://toma.felipebasurto.com/en/">
@@ -37,6 +37,81 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Montserrat:wght@700;800&family=Inter:wght@400;500;600&display=swap">
 <link rel="stylesheet" href="/styles.css">
 <script>document.documentElement.className='js'</script>
+<script type="application/ld+json">
+[
+ {
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  "name": "Toma",
+  "url": "https://toma.felipebasurto.com/en/",
+  "description": "Record a region of your Mac screen and save it as MP4, HEVC or GIF.",
+  "applicationCategory": "MultimediaApplication",
+  "operatingSystem": "macOS 26",
+  "softwareVersion": "1.2.0",
+  "fileSize": "0.8 MB",
+  "downloadUrl": "https://github.com/felipebasurto/toma/releases/latest/download/Toma.dmg",
+  "license": "https://opensource.org/licenses/MIT",
+  "offers": {
+   "@type": "Offer",
+   "price": "0",
+   "priceCurrency": "USD"
+  },
+  "author": {
+   "@type": "Person",
+   "name": "Felipe Basurto",
+   "url": "https://felipebasurto.com"
+  },
+  "inLanguage": "en"
+ },
+ {
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  "inLanguage": "en",
+  "mainEntity": [
+   {
+    "@type": "Question",
+    "name": "Is it free?",
+    "acceptedAnswer": {
+     "@type": "Answer",
+     "text": "Yes. It’s open source under the MIT licence, with no account, no subscription and no paid tier."
+    }
+   },
+   {
+    "@type": "Question",
+    "name": "Does it send anything to the internet?",
+    "acceptedAnswer": {
+     "@type": "Answer",
+     "text": "No. Everything happens on your Mac: Toma never connects to the internet and has no analytics. Clipboard copies are deleted after a day."
+    }
+   },
+   {
+    "@type": "Question",
+    "name": "Does it record sound?",
+    "acceptedAnswer": {
+     "@type": "Answer",
+     "text": "If you want. In the menu bar you choose no sound, the Mac’s sound, or the Mac’s sound and your microphone."
+    }
+   },
+   {
+    "@type": "Question",
+    "name": "Where are videos saved?",
+    "acceptedAnswer": {
+     "@type": "Answer",
+     "text": "By default, in the same folder as your screenshots. You can pick another one from the menu bar."
+    }
+   },
+   {
+    "@type": "Question",
+    "name": "Will it run on my Mac?",
+    "acceptedAnswer": {
+     "@type": "Answer",
+     "text": "You need macOS 26 or later. It’s universal, running on Apple silicon and Intel, and weighs less than 1 MB."
+    }
+   }
+  ]
+ }
+]
+</script>
 </head>
 <body>
 
@@ -56,16 +131,17 @@
     <p class="lede">Record a region of your screen. Save it as MP4, HEVC or GIF. Nothing else.</p>
 
     <div class="actions">
-      <a class="btn primary" href="https://github.com/felipebasurto/toma/releases/latest/download/Toma.dmg">
+      <a class="btn primary" href="/download?lang=en&amp;from=hero">
         <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" focusable="false"><path d="M16.37 12.73c-.02-2.3 1.88-3.4 1.96-3.46-1.07-1.56-2.73-1.78-3.32-1.8-1.41-.14-2.76.83-3.48.83-.72 0-1.82-.81-3-.79-1.54.02-2.96.9-3.76 2.28-1.6 2.78-.41 6.9 1.15 9.16.76 1.1 1.67 2.34 2.86 2.3 1.15-.05 1.58-.74 2.97-.74 1.38 0 1.77.74 2.98.72 1.23-.02 2.01-1.12 2.77-2.23.87-1.28 1.23-2.52 1.25-2.58-.03-.01-2.4-.92-2.42-3.65zM14.1 5.98c.63-.77 1.06-1.83.94-2.9-.91.04-2.02.61-2.67 1.37-.58.67-1.1 1.76-.96 2.8 1.02.08 2.06-.52 2.69-1.27z"/></svg>
         Download for Mac
       </a>
       <a class="btn secondary" href="https://github.com/felipebasurto/toma">
         <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" focusable="false"><path d="M12 .5a11.5 11.5 0 0 0-3.64 22.41c.58.1.79-.25.79-.56v-2c-3.2.7-3.88-1.37-3.88-1.37-.52-1.33-1.28-1.69-1.28-1.69-1.05-.71.08-.7.08-.7 1.16.08 1.77 1.19 1.77 1.19 1.03 1.77 2.7 1.26 3.36.96.1-.75.4-1.26.73-1.55-2.55-.29-5.24-1.28-5.24-5.69 0-1.26.45-2.29 1.19-3.09-.12-.29-.52-1.46.11-3.05 0 0 .97-.31 3.17 1.18a11 11 0 0 1 5.77 0c2.2-1.49 3.17-1.18 3.17-1.18.63 1.59.23 2.76.11 3.05.74.8 1.19 1.83 1.19 3.09 0 4.42-2.7 5.39-5.26 5.68.41.36.78 1.06.78 2.14v3.17c0 .31.21.67.8.56A11.5 11.5 0 0 0 12 .5z"/></svg>
         Code
+        <span class="stars" data-stars hidden><span aria-hidden="true">★</span> <span data-count></span><span class="sr"> stars on GitHub</span></span>
       </a>
     </div>
-    <p class="meta">Free · Open source · macOS 26 · Apple silicon and Intel</p>
+    <p class="meta">Free · Open source · <span data-version>v1.2.0</span> · <span data-size>0.8 MB</span> · macOS 26 · Apple silicon and Intel</p>
 
     <div class="stage" aria-label="Animation: a region is drawn and recorded, then a thumbnail appears with MP4, HEVC and GIF" role="img">
       <div class="bar"><span class="timer">Recording</span><span>Thu 15 Oct</span></div>
@@ -139,12 +215,55 @@
     </ul>
   </section>
 
+  <section class="block reveal">
+    <div>
+      <h2>Why not ⇧⌘5?</h2>
+      <p>The macOS recorder works, but it’s built for something else. Toma is built for sharing.</p>
+    </div>
+    <table class="compare">
+      <caption>Comparison with the screen recorder built into macOS</caption>
+      <thead><tr><td></td><th scope="col">⇧⌘5</th><th scope="col">Toma</th></tr></thead>
+      <tbody>
+        <tr><th scope="row">To start</th><td>Open the toolbar, pick a mode, click Record</td><td>One shortcut, then drag</td></tr>
+        <tr><th scope="row">Format</th><td>.mov only</td><td>MP4, HEVC or GIF, chosen afterwards</td></tr>
+        <tr><th scope="row">Mac sound</th><td>No</td><td>Yes, plus your microphone if you want</td></tr>
+        <tr><th scope="row">For sharing</th><td>The file as it is</td><td>Re-encoded: sharp and light</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section class="faq reveal" id="faq">
+    <h2>Questions</h2>
+    <div class="qa">
+      <details>
+        <summary>Is it free?</summary>
+        <p>Yes. It’s open source under the MIT licence, with no account, no subscription and no paid tier.</p>
+      </details>
+      <details>
+        <summary>Does it send anything to the internet?</summary>
+        <p>No. Everything happens on your Mac: Toma never connects to the internet and has no analytics. Clipboard copies are deleted after a day.</p>
+      </details>
+      <details>
+        <summary>Does it record sound?</summary>
+        <p>If you want. In the menu bar you choose no sound, the Mac’s sound, or the Mac’s sound and your microphone.</p>
+      </details>
+      <details>
+        <summary>Where are videos saved?</summary>
+        <p>By default, in the same folder as your screenshots. You can pick another one from the menu bar.</p>
+      </details>
+      <details>
+        <summary>Will it run on my Mac?</summary>
+        <p>You need macOS 26 or later. It’s universal, running on Apple silicon and Intel, and weighs less than 1 MB.</p>
+      </details>
+    </div>
+  </section>
+
   <section class="close reveal">
     <h2>Record what matters.</h2>
     <div class="actions">
-      <a class="btn primary" href="https://github.com/felipebasurto/toma/releases/latest/download/Toma.dmg">Download for Mac</a>
+      <a class="btn primary" href="/download?lang=en&amp;from=close">Download for Mac</a>
     </div>
-    <p class="note"><b>First time:</b> drag Toma to Applications and open it. It isn’t notarized yet, so go to System Settings › Privacy &amp; Security and click «Open Anyway». Then grant Screen Recording permission.</p>
+    <p class="note"><b>First time:</b> drag Toma to Applications and open it. It’s signed and notarized by Apple, so it opens without warnings. Then grant Screen Recording permission and reopen it.</p>
   </section>
 
 </main>
@@ -174,6 +293,27 @@
     });
   }, { threshold: 0.15 });
   for (var j = 0; j < items.length; j++) io.observe(items[j]);
+})();
+</script>
+<script>
+(function () {
+  var repo = 'https://api.github.com/repos/felipebasurto/toma';
+  function get(url) { return fetch(url).then(function (r) { if (!r.ok) throw r; return r.json(); }); }
+  get(repo + '/releases/latest').then(function (rel) {
+    var dmg = (rel.assets || []).filter(function (a) { return a.name === 'Toma.dmg'; })[0];
+    document.querySelectorAll('[data-version]').forEach(function (el) { el.textContent = rel.tag_name; });
+    if (dmg) document.querySelectorAll('[data-size]').forEach(function (el) {
+      el.textContent = (dmg.size / 1e6).toLocaleString('en', { maximumFractionDigits: 1 }) + ' MB';
+    });
+  }).catch(function () {});
+  // Hidden until the count says something; "★ 0" would argue against downloading.
+  get(repo).then(function (r) {
+    if (r.stargazers_count < 10) return;
+    document.querySelectorAll('[data-stars]').forEach(function (el) {
+      el.querySelector('[data-count]').textContent = r.stargazers_count.toLocaleString('en');
+      el.hidden = false;
+    });
+  }).catch(function () {});
 })();
 </script>
 <script defer src="https://static.cloudflareinsights.com/beacon.min.js" data-cf-beacon='{"token": "5d165796903945e7b88d262434e278f4"}'></script>
