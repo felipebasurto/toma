@@ -25,7 +25,7 @@ no settings window, no account and no editor. It records a region of your screen
 ## Install
 
 1. Download **[Toma.dmg](https://github.com/felipebasurto/toma/releases/latest/download/Toma.dmg)** and drag Toma to Applications.
-2. Open it. Toma is not notarized yet, so macOS blocks it the first time: go to **System Settings › Privacy & Security** and click **Open Anyway**.
+2. Open it. Toma is signed and notarized by Apple, so it opens without warnings.
 3. Grant the **Screen Recording** permission, then reopen Toma.
 
 Requires macOS 26 or later. It is universal (Apple silicon and Intel) and weighs less than 1 MB.
