@@ -102,7 +102,7 @@ notarizes and staples the disk image.
 
 ## How it's built
 
-About 2,300 lines of Swift in a single module, organised by what each part knows:
+About 2,500 lines of Swift in a single module, organised by what each part knows:
 
 | File | What it knows |
 |---|---|

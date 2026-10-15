@@ -4,5 +4,6 @@ Toma.app/
 *.zip
 .DS_Store
 .wrangler/
+.cloudflare/
 Toma.dmg
 Toma-rw.dmg
