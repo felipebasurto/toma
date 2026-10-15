@@ -574,6 +574,8 @@ h1 .keys {
 
 .options b {
   justify-self: start;
+  align-self: start;
+  line-height: 1.5;
   padding: 2px 10px;
   border-radius: 999px;
   background: var(--tone-bg);
@@ -656,9 +658,9 @@ h1 .keys {
   justify-content: center;
   align-items: center;
   gap: 8px 22px;
-  padding-top: 36px;
+  margin-top: 56px;
+  padding-top: 20px;
   padding-bottom: 52px;
-  border-top: 1px solid var(--line);
   color: var(--muted);
   font-size: 14px;
 }
@@ -816,49 +818,241 @@ h1 .keys {
 
 .qa p { margin: 0 0 18px; max-width: 600px; color: var(--muted); font-size: 16px; }
 
-/* Dark: the same palette, tints become deep and inks become light. */
-@media (prefers-color-scheme: dark) {
-  :root {
-    color-scheme: dark;
-    --bg: #191919;
-    --ink: #E6E5E1;
-    --muted: #9B9A97;
-    --line: #2F2F2D;
-    --soft: #202020;
-    --accent: #4A9DF0;
-    --accent-soft: #1C2F45;
-    --accent-ink: #8CC2F7;
-    --blue-bg: #1B2E44;   --blue-ink: #8CC2F7;
-    --green-bg: #15332A;  --green-ink: #7FD8B5;
-    --orange-bg: #3A2614; --orange-ink: #F7B47A;
-    --yellow-bg: #362C10; --yellow-ink: #F2CF6B;
-    --pink-bg: #3A1D2B;   --pink-ink: #F59CC2;
-    --purple-bg: #2A2142; --purple-ink: #BBA4F5;
-  }
-
-  ::selection { background: #5C4A10; }
-
-  .hero::before { opacity: 0.55; }
-  kbd { background: var(--soft); border-color: rgba(74, 157, 240, 0.4); }
-  .btn.primary { color: #fff; box-shadow: 0 10px 22px -10px rgba(35, 131, 226, 0.5); }
-  .stars { background: rgba(0, 0, 0, 0.25); }
-
-  .stage {
-    background:
-      radial-gradient(circle at 1px 1px, rgba(74, 157, 240, 0.2) 1px, transparent 0) 0 0 / 22px 22px,
-      linear-gradient(135deg, #17243A 0%, #2A1B2E 52%, #2E2715 100%);
-  }
-  .bar { background: rgba(25, 25, 25, 0.85); }
-  .doc { background: #262626; box-shadow: 0 8px 20px -10px rgba(0, 0, 0, 0.6); }
-  .card { background: rgba(38, 38, 38, 0.96); box-shadow: 0 18px 40px -12px rgba(0, 0, 0, 0.6), 0 0 0 0.5px rgba(255, 255, 255, 0.12); }
-  .thumb { background: radial-gradient(circle at 1px 1px, rgba(74, 157, 240, 0.22) 1px, transparent 0) 0 0 / 9px 9px, #1E1E1E; }
-  .formats .dot { color: #55534F; }
-
-  .steps li::before { background: var(--bg); box-shadow: none; }
-  .shot { box-shadow: 0 28px 60px -24px rgba(0, 0, 0, 0.7), 0 0 0 0.5px rgba(255, 255, 255, 0.12); }
-  .note { background: rgba(0, 0, 0, 0.3); box-shadow: inset 0 0 0 1px rgba(242, 207, 107, 0.2); }
+/* Dark: the same palette, tints become deep and inks become light. A script in <head> sets
+   data-theme from the visitor's choice or, failing that, the system setting. */
+[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #191919;
+  --ink: #E6E5E1;
+  --muted: #9B9A97;
+  --line: #2F2F2D;
+  --soft: #202020;
+  --accent: #4A9DF0;
+  --accent-soft: #1C2F45;
+  --accent-ink: #8CC2F7;
+  --blue-bg: #1B2E44;   --blue-ink: #8CC2F7;
+  --green-bg: #15332A;  --green-ink: #7FD8B5;
+  --orange-bg: #3A2614; --orange-ink: #F7B47A;
+  --yellow-bg: #362C10; --yellow-ink: #F2CF6B;
+  --pink-bg: #3A1D2B;   --pink-ink: #F59CC2;
+  --purple-bg: #2A2142; --purple-ink: #BBA4F5;
+  --frame: #333331;
+  --frame-ink: #C9C8C4;
 }
 
-@media (prefers-color-scheme: dark) and (hover: hover) and (pointer: fine) {
-  .btn.secondary:hover { background-color: #4A3C14; }
+[data-theme="dark"] ::selection { background: #5C4A10; }
+
+[data-theme="dark"] .hero::before { opacity: 0.55; }
+[data-theme="dark"] kbd { background: var(--soft); border-color: rgba(74, 157, 240, 0.4); }
+[data-theme="dark"] .btn.primary { color: #fff; box-shadow: 0 10px 22px -10px rgba(35, 131, 226, 0.5); }
+[data-theme="dark"] .stars { background: rgba(0, 0, 0, 0.25); }
+
+[data-theme="dark"] .stage {
+  background:
+    radial-gradient(circle at 1px 1px, rgba(74, 157, 240, 0.2) 1px, transparent 0) 0 0 / 22px 22px,
+    linear-gradient(135deg, #17243A 0%, #2A1B2E 52%, #2E2715 100%);
 }
+[data-theme="dark"] .bar { background: rgba(25, 25, 25, 0.85); }
+[data-theme="dark"] .doc { background: #262626; box-shadow: 0 8px 20px -10px rgba(0, 0, 0, 0.6); }
+[data-theme="dark"] .card { background: rgba(38, 38, 38, 0.96); box-shadow: 0 18px 40px -12px rgba(0, 0, 0, 0.6), 0 0 0 0.5px rgba(255, 255, 255, 0.12); }
+[data-theme="dark"] .thumb { background: radial-gradient(circle at 1px 1px, rgba(74, 157, 240, 0.22) 1px, transparent 0) 0 0 / 9px 9px, #1E1E1E; }
+[data-theme="dark"] .formats .dot { color: #55534F; }
+
+[data-theme="dark"] .steps li::before { background: var(--bg); box-shadow: none; }
+[data-theme="dark"] .clip { box-shadow: 0 28px 60px -24px rgba(0, 0, 0, 0.7), 0 0 0 0.5px rgba(255, 255, 255, 0.1); }
+[data-theme="dark"] .note { background: rgba(0, 0, 0, 0.3); box-shadow: inset 0 0 0 1px rgba(242, 207, 107, 0.2); }
+
+@media (hover: hover) and (pointer: fine) {
+  [data-theme="dark"] .btn.secondary:hover { background-color: #4A3C14; }
+}
+
+/* Theme switch, top right of the hero */
+
+.theme {
+  position: absolute;
+  top: 16px;
+  right: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--bg) 70%, transparent);
+  color: var(--ink);
+  cursor: pointer;
+  transition: transform 160ms var(--ease-out), border-color 160ms ease;
+}
+
+.theme svg { width: 18px; height: 18px; }
+.theme .moon, [data-theme="dark"] .theme .sun { display: none; }
+[data-theme="dark"] .theme .moon { display: block; }
+.theme:active { transform: scale(0.94); }
+.theme:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+
+@media (hover: hover) and (pointer: fine) {
+  .theme:hover { border-color: var(--accent); }
+}
+
+/* The result card, live: pick a format, copy it. Drawn in HTML so it follows the theme. */
+
+.clip {
+  --frame: #DADAD8;
+  --frame-ink: #4A4945;
+  justify-self: center;
+  width: min(460px, 100%);
+  margin: 0;
+  padding: 12px 12px 0;
+  border-radius: 22px;
+  background: var(--frame);
+  box-shadow: 0 28px 60px -20px rgba(232, 71, 138, 0.38), 0 14px 32px -14px rgba(35, 131, 226, 0.4), 0 0 0 0.5px rgba(15, 15, 15, 0.1);
+}
+
+[data-theme="dark"] .clip { --frame: #333331; --frame-ink: #C9C8C4; }
+
+.editor {
+  position: relative;
+  overflow: hidden;
+  border-radius: 12px;
+  background: #1E1E20;
+  color: #E4E4E6;
+}
+
+.editor .title {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  height: 30px;
+  padding: 0 12px;
+  border-bottom: 1px solid #2C2C2F;
+  background: #28282B;
+  color: #8E8E93;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.editor .title i { width: 10px; height: 10px; border-radius: 50%; background: #FF5F57; }
+.editor .title i:nth-child(2) { background: #FEBC2E; }
+.editor .title i:nth-child(3) { background: #28C840; margin-right: 12px; }
+
+.editor pre {
+  margin: 0;
+  padding: 12px 14px 40px;
+  overflow: hidden;
+  font: 12px/1.6 ui-monospace, "SF Mono", Menlo, monospace;
+  counter-reset: line 37;
+}
+
+.editor pre span.l { display: block; white-space: pre; counter-increment: line; }
+.editor pre span.l::before { content: counter(line); display: inline-block; width: 2.4em; color: #5E5E63; }
+.editor .c { color: #7F8C98; }
+.editor .k { color: #FF7AB2; }
+.editor .f { color: #6BDFFF; }
+.editor .t { color: #5DD8FF; }
+.editor .b { color: #D9A6FF; }
+
+.editor .dur {
+  position: absolute;
+  left: 10px;
+  bottom: 10px;
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: #000;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.editor .dur::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  bottom: -10px;
+  width: 400px;
+  height: 2px;
+  background: var(--accent);
+  transform-origin: 0 50%;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .editor .dur::after { animation: progress 7s linear infinite; }
+}
+
+@keyframes progress { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+
+.pick {
+  position: relative;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 4px;
+  height: 46px;
+}
+
+.pick .dot { color: color-mix(in srgb, var(--frame-ink) 40%, transparent); }
+
+.pick button {
+  min-width: 44px;
+  min-height: 34px;
+  padding: 0 8px;
+  border: 0;
+  border-radius: 8px;
+  background: none;
+  color: color-mix(in srgb, var(--frame-ink) 75%, transparent);
+  font: 600 15px/1 Inter, -apple-system, sans-serif;
+  cursor: pointer;
+  transition: color 140ms ease, background-color 140ms ease, transform 140ms var(--ease-out);
+}
+
+.pick button[aria-pressed="true"] { color: var(--ink); font-weight: 800; }
+[data-theme="dark"] .pick button[aria-pressed="true"] { color: #fff; }
+.pick button:active { transform: scale(0.94); }
+.pick button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+
+@media (hover: hover) and (pointer: fine) {
+  .pick button:hover { background: color-mix(in srgb, var(--frame-ink) 12%, transparent); }
+}
+
+.pick .copy {
+  position: absolute;
+  right: 6px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 36px;
+}
+
+.pick .copy svg { width: 17px; height: 17px; }
+
+.pick .copied {
+  position: absolute;
+  right: 0;
+  bottom: calc(100% + 6px);
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: var(--ink);
+  color: var(--bg);
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+  opacity: 0;
+  transform: translateY(4px);
+  transition: opacity 160ms ease, transform 160ms var(--ease-out);
+  pointer-events: none;
+}
+
+.pick .copied.on { opacity: 1; transform: none; }
+
+.clip figcaption {
+  margin: 0 -12px;
+  padding: 10px 16px 12px;
+  border-top: 1px solid color-mix(in srgb, var(--frame-ink) 18%, transparent);
+  color: var(--frame-ink);
+  font-size: 13px;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+.clip figcaption b { font-weight: 600; }
