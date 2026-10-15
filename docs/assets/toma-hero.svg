@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="420" viewBox="0 0 1200 420" role="img" aria-label="Toma: ⇧⌘4, pero en vídeo.">
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="420" viewBox="0 0 1200 420" role="img" aria-label="Toma: ⇧⌘4, but for video. Record a region of your Mac screen. MP4, HEVC or GIF.">
   <defs>
     <pattern id="dots" width="22" height="22" patternUnits="userSpaceOnUse"><circle cx="1" cy="1" r="1" fill="#E3E2DE"/></pattern>
     <linearGradient id="tile" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFFFFF"/><stop offset="1" stop-color="#E7F1FD"/></linearGradient>
@@ -13,8 +13,8 @@
     <circle cx="125" cy="52" r="20" fill="#2383E2"/>
   </g>
   <text x="312" y="196" font-family="Montserrat, -apple-system, 'SF Pro Display', 'Helvetica Neue', Arial, sans-serif" font-size="64" font-weight="800" letter-spacing="-2" fill="#37352F">toma</text>
-  <text x="312" y="262" font-family="-apple-system, 'SF Pro Display', 'Helvetica Neue', Arial, sans-serif" font-size="40" font-weight="700" letter-spacing="-1" fill="#37352F"><tspan fill="#2383E2">⇧⌘4</tspan>, pero en vídeo.</text>
-  <text x="312" y="306" font-family="-apple-system, 'SF Pro Text', 'Helvetica Neue', Arial, sans-serif" font-size="22" fill="#787774">Graba una zona de la pantalla del Mac. MP4, HEVC o GIF.</text>
+  <text x="312" y="262" font-family="-apple-system, 'SF Pro Display', 'Helvetica Neue', Arial, sans-serif" font-size="40" font-weight="700" letter-spacing="-1" fill="#37352F"><tspan fill="#2383E2">⇧⌘4</tspan>, but for video.</text>
+  <text x="312" y="306" font-family="-apple-system, 'SF Pro Text', 'Helvetica Neue', Arial, sans-serif" font-size="22" fill="#787774">Record a region of your Mac screen. MP4, HEVC or GIF.</text>
   <g transform="translate(900 96)">
     <rect width="208" height="228" rx="14" fill="#FFFFFF" stroke="#E9E9E7"/>
     <rect x="8" y="8" width="192" height="168" rx="8" fill="#FBFBFA"/>
