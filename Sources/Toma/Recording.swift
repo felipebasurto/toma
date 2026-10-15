@@ -92,17 +92,26 @@ final class Recording {
             try? await stream.stopCapture()
             throw .streamFailed(underlying: reason)
         }
-        return Recording(stream: stream, sink: sink, master: master, region: region)
+        return Recording(stream: stream, output: recordingOutput, sink: sink, master: master, region: region)
     }
 
     /// Requests the end of the recording. Idempotent and non-blocking: the first call stops the
     /// stream, later calls do nothing. The result arrives through `clip`.
+    ///
+    /// The file is finalized by removing the recording output first, then stopping the stream.
+    /// If neither call settles within a few seconds, the recording is closed with whatever
+    /// reached the disk, so the menu bar can never stay stuck on the timer.
     func stop() {
         guard !stopRequested else { return }
         stopRequested = true
-        let stream = self.stream, sink = self.sink
+        let stream = self.stream, output = self.output, sink = self.sink
         Task {
+            try? stream.removeRecordingOutput(output)
             do { try await stream.stopCapture() } catch { sink.streamEnded() }
+        }
+        Task {
+            try? await Task.sleep(for: .seconds(5))
+            sink.streamEnded()          // no-op when the recording already finished
         }
     }
 
@@ -127,14 +136,16 @@ final class Recording {
     }
 
     private let stream: SCStream
+    private let output: SCRecordingOutput
     private let sink: RecordingSink
     private let master: URL
     private let region: ScreenRegion
     private var stopRequested = false
     private var finished: Result<Clip, TomaError>?
 
-    private init(stream: SCStream, sink: RecordingSink, master: URL, region: ScreenRegion) {
+    private init(stream: SCStream, output: SCRecordingOutput, sink: RecordingSink, master: URL, region: ScreenRegion) {
         self.stream = stream
+        self.output = output
         self.sink = sink
         self.master = master
         self.region = region

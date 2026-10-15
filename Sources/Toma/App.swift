@@ -19,12 +19,24 @@ enum TomaApp {
 final class AppDelegate: NSObject, NSApplicationDelegate {
     private var toma: Toma?
     private var hotkey: Hotkey?
+    private var welcome: Welcome?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         Library.removeLeftovers()                    // crash-halfway cleanup, day-old clipboard files
         let toma = Toma()
         self.toma = toma
         hotkey = Hotkey(.optionShiftCommand4) { toma.toggle() }
+
+        let welcome = Welcome()
+        welcome.onRecord = { toma.toggle() }
+        self.welcome = welcome
+        welcome.showIfFirstLaunch()
+    }
+
+    /// Opening Toma again from Applications, Launchpad or Spotlight brings the welcome window back.
+    func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
+        welcome?.show()
+        return true
     }
 }
 
