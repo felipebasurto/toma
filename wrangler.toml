@@ -3,6 +3,7 @@ pages_build_output_dir = "landing"
 compatibility_date = "2026-09-01"
 
 # One row per click on "Download", written by functions/download.js.
-[[analytics_engine_datasets]]
-binding = "DOWNLOADS"
-dataset = "toma_downloads"
+# Needs Analytics Engine enabled on the account (Workers › Analytics Engine); uncomment then.
+# [[analytics_engine_datasets]]
+# binding = "DOWNLOADS"
+# dataset = "toma_downloads"
