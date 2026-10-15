@@ -1,0 +1,6 @@
+.build/
+.swiftpm/
+Toma.app/
+*.zip
+.DS_Store
+.wrangler/
