@@ -1,0 +1,19 @@
+# Toma
+
+> Toma is a free, open-source macOS menu bar app that records a region of the Mac screen and saves it as MP4, HEVC or GIF. It is ⇧⌘4, but for video: press ⌥⇧⌘4, drag a rectangle, and it records until you press the shortcut again.
+
+- Price: free, MIT licence, no account, no subscription.
+- Requires macOS 26 or later. Universal (Apple silicon and Intel). The download is under 1 MB, signed and notarized by Apple.
+- Format is chosen after recording, from a thumbnail that plays the clip: MP4 (H.264), HEVC or GIF. Doing nothing saves in the last format used.
+- Re-encodes for quality, not a fixed size: 4 s of scrolling text at 1120 × 720 is 0.46 MB as MP4 and 0.25 MB as HEVC.
+- Records the Mac's sound and, optionally, the microphone. The built-in ⇧⌘5 recorder saves only .mov and cannot record the Mac's sound.
+- Private: works offline, no analytics, files stay in the folder you choose.
+- Good fit for: GIFs for READMEs and pull requests, short clips for Slack, Mail or docs, bug reports.
+
+## Links
+
+- [Website (English)](https://toma.felipebasurto.com/en/)
+- [Website (Spanish)](https://toma.felipebasurto.com/es/)
+- [Download Toma.dmg](https://github.com/felipebasurto/toma/releases/latest/download/Toma.dmg)
+- [Source code and README](https://github.com/felipebasurto/toma)
+- [Changelog](https://github.com/felipebasurto/toma/blob/main/CHANGELOG.md)

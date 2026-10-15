@@ -1,0 +1,6 @@
+# Search engines, AI search and AI assistants are all welcome.
+Content-Signal: search=yes, ai-input=yes, ai-train=yes
+User-agent: *
+Allow: /
+
+Sitemap: https://toma.felipebasurto.com/sitemap.xml

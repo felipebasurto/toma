@@ -1,0 +1,8 @@
+# The pages.dev addresses duplicate the site; only the custom domain should be indexed.
+https://:project.pages.dev/*
+  X-Robots-Tag: noindex
+https://:version.:project.pages.dev/*
+  X-Robots-Tag: noindex
+
+/llms.txt
+  Content-Type: text/plain; charset=utf-8
