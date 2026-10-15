@@ -1,120 +1,120 @@
 <h1 align="center">
-  <img src="https://raw.githubusercontent.com/felipebasurto/toma/main/docs/assets/toma-hero.svg" alt="Toma: ⇧⌘4, pero en vídeo. Graba una zona de la pantalla del Mac. MP4, HEVC o GIF." width="100%">
+  <img src="https://raw.githubusercontent.com/felipebasurto/toma/main/docs/assets/toma-hero.svg" alt="Toma: ⇧⌘4, but for video. Record a region of your Mac screen. MP4, HEVC or GIF." width="100%">
 </h1>
 
 <div align="center">
 
-**⇧⌘4, pero en vídeo.**
-Graba una zona de la pantalla del Mac y guárdala en MP4, HEVC o GIF. Nada más.
+**⇧⌘4, but for video.**
+Record a region of your Mac screen and save it as MP4, HEVC or GIF. Nothing else.
 
-[![Versión](https://img.shields.io/github/v/release/felipebasurto/toma?label=versi%C3%B3n&color=2383E2)](https://github.com/felipebasurto/toma/releases/latest)
+[![Version](https://img.shields.io/github/v/release/felipebasurto/toma?label=version&color=2383E2)](https://github.com/felipebasurto/toma/releases/latest)
 [![macOS](https://img.shields.io/badge/macOS-26%2B-37352F)](https://github.com/felipebasurto/toma/releases/latest)
 [![Swift](https://img.shields.io/badge/Swift-6.2-F05138)](https://swift.org)
-[![Licencia](https://img.shields.io/github/license/felipebasurto/toma?label=licencia&color=787774)](LICENSE)
+[![License](https://img.shields.io/github/license/felipebasurto/toma?label=license&color=787774)](LICENSE)
 
 [Web](https://toma.felipebasurto.com) ·
-[Descargar](https://github.com/felipebasurto/toma/releases/latest/download/Toma.dmg) ·
-[Arquitectura](docs/arquitectura.md) ·
+[Download](https://github.com/felipebasurto/toma/releases/latest/download/Toma.dmg) ·
+[Architecture](docs/arquitectura.md) ·
 [Changelog](CHANGELOG.md)
 
 </div>
 
-Toma vive en la barra de menús. Pulsas un atajo, dibujas un rectángulo y graba. No tiene
-ventana de ajustes, ni cuenta, ni editor. Solo graba una zona de la pantalla y la guarda bien.
+Toma lives in the menu bar. You press a shortcut, draw a rectangle, and it records. There is
+no settings window, no account and no editor. It records a region of your screen and saves it well.
 
-## Instalar
+## Install
 
-1. Descarga **[Toma.dmg](https://github.com/felipebasurto/toma/releases/latest/download/Toma.dmg)** y arrastra Toma a Aplicaciones.
-2. Ábrela. Como Toma no está notarizada, la primera vez macOS la bloquea: ve a **Ajustes › Privacidad y seguridad** y pulsa **Abrir igualmente**.
-3. Concede el permiso de **Grabación de pantalla** y vuelve a abrir Toma.
+1. Download **[Toma.dmg](https://github.com/felipebasurto/toma/releases/latest/download/Toma.dmg)** and drag Toma to Applications.
+2. Open it. Toma is not notarized yet, so macOS blocks it the first time: go to **System Settings › Privacy & Security** and click **Open Anyway**.
+3. Grant the **Screen Recording** permission, then reopen Toma.
 
-Requiere macOS 26 o posterior. Es universal (Apple silicon e Intel) y ocupa menos de 1 MB.
+Requires macOS 26 or later. It is universal (Apple silicon and Intel) and weighs less than 1 MB.
 
-## Uso
+## Usage
 
 <p align="center">
-  <img src="docs/assets/tarjeta.png" alt="La miniatura de Toma tras grabar: el clip en bucle, su duración y los formatos MP4, HEVC y GIF, con un botón de copiar." width="380">
+  <img src="docs/assets/tarjeta.png" alt="The Toma thumbnail after recording: the looping clip, its duration, and the MP4, HEVC and GIF formats, with a copy button." width="380">
 </p>
 
 | | |
 |---|---|
-| <kbd>⌥</kbd> <kbd>⇧</kbd> <kbd>⌘</kbd> <kbd>4</kbd> | Empieza: arrastra una zona. Graba en cuanto sueltas. |
-| <kbd>Espacio</kbd> mientras arrastras | Mueve la zona. |
-| <kbd>⇧</kbd> mientras arrastras | Fija un eje. |
-| <kbd>⌥</kbd> mientras arrastras | Crece desde el centro. |
-| <kbd>Esc</kbd> | Cancela la selección. |
-| <kbd>⌥</kbd> <kbd>⇧</kbd> <kbd>⌘</kbd> <kbd>4</kbd> otra vez, o **■ 0:07** en la barra | Termina la grabación. |
+| <kbd>⌥</kbd> <kbd>⇧</kbd> <kbd>⌘</kbd> <kbd>4</kbd> | Start: drag a region. Recording begins as soon as you let go. |
+| <kbd>Space</kbd> while dragging | Move the region. |
+| <kbd>⇧</kbd> while dragging | Lock an axis. |
+| <kbd>⌥</kbd> while dragging | Grow from the centre. |
+| <kbd>Esc</kbd> | Cancel the selection. |
+| <kbd>⌥</kbd> <kbd>⇧</kbd> <kbd>⌘</kbd> <kbd>4</kbd> again, or **■ 0:07** in the bar | Stop recording. |
 
-Al terminar aparece una miniatura abajo a la derecha, como con las capturas:
+When it ends, a thumbnail appears at the bottom right, like screenshots do:
 
-- **MP4 · HEVC · GIF**: pulsa uno para guardar en ese formato.
-- **Copiar**: deja el archivo en el portapapeles, listo para pegar en Slack, Mail o WhatsApp.
-- **Arrastrar**: suelta la miniatura en cualquier app o carpeta.
-- **No hacer nada**: a los 6 s se guarda en el último formato que usaste.
-- **×**: descarta la grabación.
+- **MP4 · HEVC · GIF**: press one to save in that format.
+- **Copy**: puts the file on the clipboard, ready to paste into Slack, Mail or WhatsApp.
+- **Drag**: drop the thumbnail into any app or folder.
+- **Do nothing**: after 6 s it saves in the last format you used.
+- **×**: discards the recording.
 
-Si pulsas el atajo con la miniatura en pantalla, Toma guarda la grabación y empieza otra.
+If you press the shortcut while the thumbnail is on screen, Toma saves the recording and starts another.
 
-## Formatos
+## Formats
 
-| | Para qué | 4 s de texto desplazándose, 1120 × 720 |
+| | What for | 4 s of scrolling text, 1120 × 720 |
 |---|---|---|
-| **MP4** | H.264, funciona en todas partes | 0,46 MB |
-| **HEVC** | La mitad de peso, ideal en Apple y navegadores modernos | 0,25 MB |
-| **GIF** | Animación sin reproductor, para README, chats y docs | Nítido o ligero |
+| **MP4** | H.264, works everywhere | 0.46 MB |
+| **HEVC** | Half the size, ideal on Apple devices and modern browsers | 0.25 MB |
+| **GIF** | Animation without a player, for READMEs, chats and docs | Sharp or light |
 
-Toma graba primero un original de alta calidad y lo recodifica según la calidad deseada,
-no según un tamaño fijo. El texto sigue nítido y una pantalla quieta casi no pesa. El formato
-que sueles elegir se empieza a codificar mientras miras la miniatura, así que guardarlo es inmediato.
+Toma first records a high-quality original and re-encodes it for quality, not for a fixed size.
+Text stays sharp, and a still screen barely weighs anything. The format you usually pick starts
+encoding while you look at the thumbnail, so saving it is immediate.
 
-El GIF usa un codificador propio pensado para pantallas. Cada fotograma solo guarda lo que
-cambió y los colores de la interfaz se mantienen exactos. Los degradados se difuminan con
-suavidad, sin bandas.
+The GIF uses a custom encoder built for screens. Each frame only stores what changed, and interface
+colours stay exact. Gradients are smoothed out without banding.
 
-## Opciones
+## Options
 
-En el menú de la barra, cada una muestra su valor:
+In the menu bar, each one shows its current value:
 
-- **Guardar en**: una carpeta tuya, o la misma que usan las capturas de pantalla (por defecto).
-- **Tamaño del GIF**: *Nítido* (resolución completa, 20 fps) o *Ligero* (640 px, 15 fps).
-- **Sonido**: sin sonido, el sonido del Mac, o el del Mac y tu micrófono.
-- **Abrir al iniciar sesión**.
+- **Save to**: a folder of your choice, or the same one screenshots use (default).
+- **GIF size**: *Sharp* (full resolution, 20 fps) or *Light* (640 px, 15 fps).
+- **Sound**: no sound, the Mac's sound, or the Mac's sound and your microphone.
+- **Open at login**.
 
-## Privacidad
+## Privacy
 
-Todo ocurre en tu Mac. Toma no se conecta a internet, no tiene analíticas y no guarda nada
-fuera de la carpeta que eliges. Las copias al portapapeles se borran pasado un día. Las ventanas
-de Toma nunca aparecen en sus propias grabaciones.
+Everything happens on your Mac. Toma does not connect to the internet, has no analytics and does not
+store anything outside the folder you choose. Clipboard copies are deleted after a day. Toma's own
+windows never appear in its recordings.
 
-## Compilar desde el código
+## Build from source
 
-Necesitas Xcode 26 (Swift 6.2). No hay dependencias.
+You need Xcode 26 (Swift 6.2). There are no dependencies.
 
 ```bash
 git clone https://github.com/felipebasurto/toma.git
 cd toma
 ./build.sh        # → Toma.app
-./build.sh dmg    # → Toma.app y Toma.dmg
+./build.sh dmg    # → Toma.app and Toma.dmg
 ```
 
-Si tienes un certificado de desarrollo, `build.sh` firma con él y el permiso de Grabación de
-pantalla se mantiene entre compilaciones.
+If you have a development certificate, `build.sh` signs with it, so the Screen Recording permission
+survives rebuilds. With a Developer ID certificate and a notarytool profile, `./build.sh dmg` also
+notarizes and staples the disk image.
 
-## Cómo está hecho
+## How it's built
 
-Son unas 2.300 líneas de Swift en un solo módulo, organizadas por lo que cada parte sabe:
+About 2,300 lines of Swift in a single module, organised by what each part knows:
 
-| Archivo | Qué sabe |
+| File | What it knows |
 |---|---|
-| `Toma.swift` | El estado (una máquina con un solo verbo: `toggle()`) y la historia de una grabación. |
-| `Region.swift` | Coordenadas: una zona solo puede existir si se puede grabar tal cual. |
-| `Recording.swift` | ScreenCaptureKit y permisos. |
-| `Library.swift` | Carpetas, nombres, formatos y recodificación. |
-| `GIF.swift` | El codificador de GIF. |
-| `Overlay.swift`, `ResultCard.swift`, `StatusItem.swift` | La interfaz. |
+| `Toma.swift` | The state (a state machine with one verb: `toggle()`) and the history of a recording. |
+| `Region.swift` | Coordinates: a region can only exist if it can be recorded exactly as drawn. |
+| `Recording.swift` | ScreenCaptureKit and permissions. |
+| `Library.swift` | Folders, names, formats and re-encoding. |
+| `GIF.swift` | The GIF encoder. |
+| `Overlay.swift`, `ResultCard.swift`, `StatusItem.swift` | The interface. |
 
-El porqué de cada decisión está en [docs/arquitectura.md](docs/arquitectura.md).
+The reasoning behind each decision is in [docs/arquitectura.md](docs/arquitectura.md).
 
-## Licencia
+## License
 
-[MIT](LICENSE). Hecho por [Felipe Basurto](https://felipebasurto.com).
+[MIT](LICENSE). Made by [Felipe Basurto](https://felipebasurto.com).
