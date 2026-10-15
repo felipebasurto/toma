@@ -4,3 +4,5 @@ Toma.app/
 *.zip
 .DS_Store
 .wrangler/
+Toma.dmg
+Toma-rw.dmg
