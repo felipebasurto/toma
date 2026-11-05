@@ -6,6 +6,8 @@ Todos los cambios relevantes se documentan aquí. El formato sigue
 
 ## [Unreleased]
 
+## [1.3.0] - 2026-11-05
+
 ### Añadido
 
 - **Interfaz en inglés**. Toma sigue el idioma del sistema: español si lo prefieres, inglés en
