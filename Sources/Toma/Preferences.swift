@@ -9,15 +9,15 @@ enum Preferences {
 
         var title: String {
             switch self {
-            case .sharp: "Nítido"
-            case .light: "Ligero"
+            case .sharp: tr("Sharp")
+            case .light: tr("Light")
             }
         }
 
         var detail: String {
             switch self {
-            case .sharp: "Resolución completa, 20 fps"
-            case .light: "640 px, 15 fps · para chats"
+            case .sharp: tr("Full resolution, 20 fps")
+            case .light: tr("640 px, 15 fps · for chats")
             }
         }
 
@@ -34,9 +34,9 @@ enum Preferences {
 
         var title: String {
             switch self {
-            case .none: "Sin sonido"
-            case .system: "Sonido del Mac"
-            case .systemAndMicrophone: "Sonido del Mac y micrófono"
+            case .none: tr("No Sound")
+            case .system: tr("Mac Sound")
+            case .systemAndMicrophone: tr("Mac Sound and Microphone")
             }
         }
     }
@@ -75,8 +75,8 @@ enum Preferences {
         panel.canChooseDirectories = true
         panel.canChooseFiles = false
         panel.canCreateDirectories = true
-        panel.prompt = "Elegir"
-        panel.message = "Elige dónde guardar las grabaciones."
+        panel.prompt = tr("Choose")
+        panel.message = tr("Choose where to save recordings.")
         panel.directoryURL = Library.destination
         if panel.runModal() == .OK, let url = panel.url { folder = url }
     }

@@ -224,19 +224,19 @@ private final class CardView: NSVisualEffectView {
             let button = TextButton(format.label, emphasized: format == suggested, target: self, action: #selector(pick(_:)))
             button.tag = i
             button.toolTip = format.help
-            button.setAccessibilityLabel("Guardar como \(format.label)")
+            button.setAccessibilityLabel(tr("Save as %@", format.label))
             row.addArrangedSubview(button)
         }
         row.translatesAutoresizingMaskIntoConstraints = false
         addSubview(row)
 
-        let copy = NSButton(image: NSImage(systemSymbolName: "doc.on.doc", accessibilityDescription: "Copiar")!,
+        let copy = NSButton(image: NSImage(systemSymbolName: "doc.on.doc", accessibilityDescription: tr("Copy"))!,
                             target: self, action: #selector(copyToClipboard))
         copy.isBordered = false
         copy.contentTintColor = .secondaryLabelColor
         copy.symbolConfiguration = .init(pointSize: 11, weight: .regular)
-        copy.toolTip = "Copiar \(suggested.label) al portapapeles"
-        copy.setAccessibilityLabel("Copiar \(suggested.label) al portapapeles")
+        copy.toolTip = tr("Copy %@ to clipboard", suggested.label)
+        copy.setAccessibilityLabel(tr("Copy %@ to clipboard", suggested.label))
         copy.translatesAutoresizingMaskIntoConstraints = false
         addSubview(copy)
 
@@ -259,7 +259,7 @@ private final class CardView: NSVisualEffectView {
             badge.bottomAnchor.constraint(equalTo: bottomAnchor, constant: -(frame.minY + 4)),
         ])
 
-        let close = NSButton(image: NSImage(systemSymbolName: "xmark.circle.fill", accessibilityDescription: "Descartar")!,
+        let close = NSButton(image: NSImage(systemSymbolName: "xmark.circle.fill", accessibilityDescription: tr("Discard"))!,
                              target: self, action: #selector(discard))
         close.isBordered = false
         close.contentTintColor = .white
@@ -377,7 +377,7 @@ private final class ThumbView: NSView, NSDraggingSource, NSFilePromiseProviderDe
     }
 
     nonisolated func filePromiseProvider(_ provider: NSFilePromiseProvider, fileNameForType fileType: String) -> String {
-        MainActor.assumeIsolated { owner?.promisedName ?? "Grabación de pantalla" }
+        MainActor.assumeIsolated { owner?.promisedName ?? tr("Screen Recording") }
     }
 
     nonisolated func operationQueue(for provider: NSFilePromiseProvider) -> OperationQueue { .main }

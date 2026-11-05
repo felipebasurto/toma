@@ -13,6 +13,8 @@ APP=Toma.app
 rm -rf "$APP"; mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 cp .build/apple/Products/Release/Toma "$APP/Contents/MacOS/Toma"
 cp Resources/Toma.icns "$APP/Contents/Resources/Toma.icns"
+# English is the base; the Spanish lproj covers the Spanish UI (Strings.swift uses the English text as key).
+for L in en es; do cp -R "Resources/$L.lproj" "$APP/Contents/Resources/$L.lproj"; done
 cat > "$APP/Contents/Info.plist" <<PLIST
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
@@ -25,13 +27,14 @@ cat > "$APP/Contents/Info.plist" <<PLIST
   <key>CFBundlePackageType</key><string>APPL</string>
   <key>CFBundleShortVersionString</key><string>$VERSION</string>
   <key>CFBundleVersion</key><string>$BUILD</string>
-  <key>CFBundleDevelopmentRegion</key><string>es</string>
+  <key>CFBundleDevelopmentRegion</key><string>en</string>
+  <key>CFBundleLocalizations</key><array><string>en</string><string>es</string></array>
   <key>LSApplicationCategoryType</key><string>public.app-category.productivity</string>
   <key>LSMinimumSystemVersion</key><string>26.0</string>
   <key>LSUIElement</key><true/>
-  <key>NSHumanReadableCopyright</key><string>© 2026 Felipe Basurto. Licencia MIT.</string>
-  <key>NSScreenCaptureUsageDescription</key><string>Toma graba la zona de la pantalla que eliges.</string>
-  <key>NSMicrophoneUsageDescription</key><string>Toma graba tu voz junto a la pantalla cuando eliges «Sonido del Mac y micrófono».</string>
+  <key>NSHumanReadableCopyright</key><string>© 2026 Felipe Basurto. MIT License.</string>
+  <key>NSScreenCaptureUsageDescription</key><string>Toma records the region of the screen you choose.</string>
+  <key>NSMicrophoneUsageDescription</key><string>Toma records your voice along with the screen when you choose “Mac Sound and Microphone”.</string>
 </dict></plist>
 PLIST
 

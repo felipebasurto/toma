@@ -6,6 +6,20 @@ Todos los cambios relevantes se documentan aquí. El formato sigue
 
 ## [Unreleased]
 
+### Añadido
+
+- **Interfaz en inglés**. Toma sigue el idioma del sistema: español si lo prefieres, inglés en
+  cualquier otro caso. Los textos viven en `Resources/<idioma>.lproj/Localizable.strings`.
+- **Actualizaciones desde la app**. Toma busca la última versión en GitHub una vez al día. Si hay
+  una nueva, el menú muestra «Actualizar a Toma x.y.z…»: descarga el DMG, comprueba su SHA-256 y la
+  firma (mismo Developer ID que la app en uso), reemplaza la app y se reabre. También hay
+  «Buscar actualizaciones…».
+
+### Cambiado
+
+- Los archivos nuevos se llaman «Screen Recording 2026-10-15 at 21.03.12» en inglés; en español
+  se mantiene «Grabación de pantalla 2026-10-15 a las 21.03.12».
+
 ## [1.2.0] - 2026-10-15
 
 ### Añadido

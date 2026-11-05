@@ -20,10 +20,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var toma: Toma?
     private var hotkey: Hotkey?
     private var welcome: Welcome?
+    private let updater = Updater()
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         Library.removeLeftovers()                    // crash-halfway cleanup, day-old clipboard files
-        let toma = Toma()
+        let toma = Toma(updater: updater)
         self.toma = toma
         hotkey = Hotkey(.optionShiftCommand4) { toma.toggle() }
 
@@ -31,6 +32,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         welcome.onRecord = { toma.toggle() }
         self.welcome = welcome
         welcome.showIfFirstLaunch()
+        updater.startChecking()
     }
 
     /// Opening Toma again from Applications, Launchpad or Spotlight brings the welcome window back.

@@ -27,8 +27,8 @@ final class Toma {
     /// The hotkey was pressed while the card was up: save it and go straight to a new selection.
     private var againAfterSaving = false
 
-    init() {
-        statusItem = StatusItem()
+    init(updater: Updater) {
+        statusItem = StatusItem(updater: updater)
         statusItem.onPress = { [unowned self] in toggle() }
         statusItem.render(phase)
     }
@@ -100,16 +100,16 @@ final class Toma {
         }
     }
 
-    /// The single place errors become UI: one Spanish NSAlert, one sentence, one button.
+    /// The single place errors become UI: one localized NSAlert, one sentence, one button.
     private func present(_ error: any Error) {
         NSApp.activate()
         let alert = NSAlert()
-        alert.messageText = (error as? TomaError)?.message ?? "No se pudo grabar."
+        alert.messageText = (error as? TomaError)?.message ?? tr("Couldn't record.")
         alert.runModal()
     }
 }
 
-/// Every failure the user can see. Messages are final Spanish copy, short, no jargon.
+/// Every failure the user can see. Messages are localized copy (see Strings.swift), short, no jargon.
 nonisolated enum TomaError: Error, Sendable {
     case permissionDenied
     case displayUnavailable
@@ -118,10 +118,10 @@ nonisolated enum TomaError: Error, Sendable {
 
     var message: String {
         switch self {
-        case .permissionDenied:   "Toma necesita permiso para grabar la pantalla."
-        case .displayUnavailable: "La pantalla ya no está disponible."
-        case .streamFailed:       "La grabación se interrumpió."
-        case .exportFailed:       "No se pudo guardar la grabación."
+        case .permissionDenied:   tr("Toma needs permission to record the screen.")
+        case .displayUnavailable: tr("The display is no longer available.")
+        case .streamFailed:       tr("The recording was interrupted.")
+        case .exportFailed:       tr("Couldn't save the recording.")
         }
     }
 }
