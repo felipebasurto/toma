@@ -1,0 +1,3 @@
+"NSScreenCaptureUsageDescription" = "Toma records the region of the screen you choose.";
+"NSMicrophoneUsageDescription" = "Toma records your voice along with the screen when you choose “Mac Sound and Microphone”.";
+"NSHumanReadableCopyright" = "© 2026 Felipe Basurto. MIT License.";

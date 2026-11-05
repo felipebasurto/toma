@@ -4,21 +4,24 @@ import ServiceManagement
 /// The menu-bar presence. Pure rendering of `Toma.Phase` plus forwarding clicks; holds no state
 /// of its own beyond the timer that redraws elapsed time.
 ///
-/// - idle: a dashed rectangle. Click → menu: "Grabar zona ⌥⇧⌘4", then the three choices Toma
-///   remembers (folder, GIF size, sound), "Abrir al iniciar sesión", "Salir de Toma".
+/// - idle: a dashed rectangle. Click → menu: "Record Region ⌥⇧⌘4", then the three choices Toma
+///   remembers (folder, GIF size, sound), "Open at Login", "Check for Updates…", "Quit Toma".
+///   An available update adds one item on top.
 /// - recording: a stop glyph + monospaced elapsed time, "■ 0:42". Click → stop (no menu:
 ///   when recording there is exactly one thing to do).
 /// - saving: a ring that fills as the file is written; a checkmark flashes after a copy.
 /// - busy / reviewing: the idle icon, dimmed.
 final class StatusItem: NSObject {
-    /// Set once by Toma. Called for "Grabar zona" and for any click while recording.
+    /// Set once by Toma. Called for "Record Region" and for any click while recording.
     var onPress: () -> Void = {}
 
     private let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
+    private let updater: Updater
     private var ticker: Timer?
     private var phase: Toma.Phase = .idle
 
-    override init() {
+    init(updater: Updater) {
+        self.updater = updater
         super.init()
         guard let button = item.button else { return }
         button.target = self
@@ -45,7 +48,7 @@ final class StatusItem: NSObject {
         case .saving(let progress):
             button.image = ring(progress)
         case .recording(_, let since):
-            button.image = symbol("stop.fill", "Detener grabación", size: 9)
+            button.image = symbol("stop.fill", tr("Stop Recording"), size: 9)
             button.imagePosition = .imageLeading
             let update: @MainActor @Sendable () -> Void = { [weak button] in
                 guard let button else { return }
@@ -74,13 +77,24 @@ final class StatusItem: NSObject {
         let menu = NSMenu()
         menu.autoenablesItems = false
 
-        let record = item("Grabar zona", #selector(record), key: "4")
+        switch updater.state {
+        case .idle:
+            break
+        case .available(let update):
+            menu.addItem(item(tr("Update to Toma %@…", update.version), #selector(installUpdate)))
+            menu.addItem(.separator())
+        case .installing:
+            menu.addItem(item(tr("Installing update…"), nil))
+            menu.addItem(.separator())
+        }
+
+        let record = item(tr("Record Region"), #selector(record), key: "4")
         record.keyEquivalentModifierMask = [.option, .shift, .command]
         menu.addItem(record)
         menu.addItem(.separator())
 
         // Choices, each shown with its current value, Apple-style.
-        let folder = NSMenuItem(title: "Guardar en", action: nil, keyEquivalent: "")
+        let folder = NSMenuItem(title: tr("Save To"), action: nil, keyEquivalent: "")
         let folderMenu = NSMenu()
         let current = item(FileManager.default.displayName(atPath: Library.destination.path), nil)
         current.image = NSWorkspace.shared.icon(forFile: Library.destination.path)
@@ -88,15 +102,15 @@ final class StatusItem: NSObject {
         current.state = .on
         folderMenu.addItem(current)
         folderMenu.addItem(.separator())
-        folderMenu.addItem(item("Otra carpeta…", #selector(chooseFolder)))
+        folderMenu.addItem(item(tr("Other Folder…"), #selector(chooseFolder)))
         if Preferences.folder != nil {
-            folderMenu.addItem(item("Usar la carpeta de las capturas", #selector(resetFolder)))
+            folderMenu.addItem(item(tr("Use Screenshots Folder"), #selector(resetFolder)))
         }
-        folderMenu.addItem(item("Mostrar en Finder", #selector(revealFolder)))
+        folderMenu.addItem(item(tr("Show in Finder"), #selector(revealFolder)))
         folder.submenu = folderMenu
         menu.addItem(folder)
 
-        let gif = NSMenuItem(title: "Tamaño del GIF", action: nil, keyEquivalent: "")
+        let gif = NSMenuItem(title: tr("GIF Size"), action: nil, keyEquivalent: "")
         let gifMenu = NSMenu()
         for size in Preferences.GIFSize.allCases {
             let option = item(size.title, #selector(chooseGIFSize(_:)))
@@ -109,7 +123,7 @@ final class StatusItem: NSObject {
         gif.submenu = gifMenu
         menu.addItem(gif)
 
-        let sound = NSMenuItem(title: "Sonido", action: nil, keyEquivalent: "")
+        let sound = NSMenuItem(title: tr("Sound"), action: nil, keyEquivalent: "")
         let soundMenu = NSMenu()
         for audio in Preferences.Audio.allCases {
             let option = item(audio.title, #selector(chooseAudio(_:)))
@@ -121,10 +135,11 @@ final class StatusItem: NSObject {
         menu.addItem(sound)
 
         menu.addItem(.separator())
-        let login = item("Abrir al iniciar sesión", #selector(toggleLogin))
+        let login = item(tr("Open at Login"), #selector(toggleLogin))
         login.state = SMAppService.mainApp.status == .enabled ? .on : .off
         menu.addItem(login)
-        menu.addItem(NSMenuItem(title: "Salir de Toma", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q"))
+        menu.addItem(item(tr("Check for Updates…"), #selector(checkForUpdates)))
+        menu.addItem(NSMenuItem(title: tr("Quit Toma"), action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q"))
         menu.popUp(positioning: nil, at: CGPoint(x: 0, y: button.bounds.height + 5), in: button)
     }
 
@@ -154,7 +169,7 @@ final class StatusItem: NSObject {
     /// A brief checkmark after copying to the clipboard: the only confirmation, and it's enough.
     func flash() {
         guard let button = item.button else { return }
-        button.image = symbol("checkmark", "Copiado")
+        button.image = symbol("checkmark", tr("Copied"))
         Task { [weak self] in
             try? await Task.sleep(for: .seconds(1.2))
             guard let self else { return }
@@ -163,6 +178,32 @@ final class StatusItem: NSObject {
     }
 
     @objc private func record() { onPress() }
+
+    @objc private func installUpdate() {
+        Task { await updater.install() }
+    }
+
+    /// Asks now instead of waiting for the daily check, and answers in one alert either way.
+    @objc private func checkForUpdates() {
+        Task {
+            let reached = await updater.check()
+            NSApp.activate()
+            let alert = NSAlert()
+            if !reached {
+                alert.messageText = tr("Couldn't check for updates.")
+            } else if case .available(let update) = updater.state {
+                alert.messageText = tr("Toma %@ is available.", update.version)
+                alert.addButton(withTitle: tr("Update"))
+                alert.addButton(withTitle: tr("Later"))
+                if alert.runModal() == .alertFirstButtonReturn { await updater.install() }
+                return
+            } else {
+                alert.messageText = tr("Toma is up to date.")
+                alert.informativeText = tr("You have version %@.", updater.currentVersion)
+            }
+            alert.runModal()
+        }
+    }
 
     @objc private func toggleLogin() {
         let service = SMAppService.mainApp
@@ -193,7 +234,7 @@ final class StatusItem: NSObject {
             return true
         }
         image.isTemplate = true
-        image.accessibilityDescription = "Guardando GIF"
+        image.accessibilityDescription = tr("Saving GIF")
         return image
     }
 }

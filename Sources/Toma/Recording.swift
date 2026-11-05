@@ -15,7 +15,7 @@ final class Recording {
     /// be told it can't be recorded. Returns true only when capture will actually work right now.
     static func ensureAccess() -> Bool {
         if CGPreflightScreenCaptureAccess() { return true }
-        // The first ask shows the system prompt and registers Toma in Ajustes; that prompt is
+        // The first ask shows the system prompt and registers Toma in Settings; that prompt is
         // enough. Later asks get our alert, because macOS applies the grant only after a relaunch.
         let asked = "permisoSolicitado"
         guard UserDefaults.standard.bool(forKey: asked) else {
@@ -25,10 +25,10 @@ final class Recording {
         }
         NSApp.activate()
         let alert = NSAlert()
-        alert.messageText = "Toma necesita permiso para grabar la pantalla."
-        alert.informativeText = "Actívalo en Ajustes › Privacidad y seguridad › Grabación de pantalla y vuelve a abrir Toma."
-        alert.addButton(withTitle: "Abrir Ajustes")
-        alert.addButton(withTitle: "Salir")
+        alert.messageText = tr("Toma needs permission to record the screen.")
+        alert.informativeText = tr("Turn it on in Settings › Privacy & Security › Screen Recording, then reopen Toma.")
+        alert.addButton(withTitle: tr("Open Settings"))
+        alert.addButton(withTitle: tr("Quit"))
         if alert.runModal() == .alertFirstButtonReturn {
             NSWorkspace.shared.open(URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture")!)
         }

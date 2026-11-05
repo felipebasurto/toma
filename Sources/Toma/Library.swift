@@ -38,9 +38,9 @@ nonisolated enum Format: String, CaseIterable, Sendable {
 
     @MainActor var help: String {
         switch self {
-        case .mp4: "Vídeo H.264 · funciona en todas partes"
-        case .hevc: "Vídeo HEVC · la mitad de peso, ideal en Apple"
-        case .gif: "GIF animado · \(Preferences.gifSize.title.lowercased())"
+        case .mp4: tr("H.264 video · works everywhere")
+        case .hevc: tr("HEVC video · half the size, ideal on Apple")
+        case .gif: tr("Animated GIF · %@", Preferences.gifSize.title.lowercased())
         }
     }
 }
@@ -59,7 +59,7 @@ enum Library {
         Format(rawValue: UserDefaults.standard.string(forKey: "formato") ?? "") ?? .mp4
     }
 
-    /// The folder the user chose, else `com.apple.screencapture location` (⇧⌘5 › Opciones),
+    /// The folder the user chose, else `com.apple.screencapture location` (⇧⌘5 › Options),
     /// else the Desktop.
     static var destination: URL {
         let fm = FileManager.default
@@ -76,12 +76,13 @@ enum Library {
     }
 
     /// The name a recording made now gets, without extension:
-    /// "Grabación de pantalla 2026-10-15 a las 21.03.12", mirroring Apple's screenshots.
+    /// "Screen Recording 2026-10-15 at 21.03.12" (Spanish: "Grabación de pantalla 2026-10-15 a las 21.03.12"),
+    /// mirroring Apple's screenshots.
     static func fileName(_ date: Date = .now) -> String {
         let f = DateFormatter()
-        f.locale = Locale(identifier: "es_ES")
-        f.dateFormat = "yyyy-MM-dd 'a las' HH.mm.ss"
-        return "Grabación de pantalla \(f.string(from: date))"
+        f.locale = Locale(identifier: "en_US_POSIX")
+        f.dateFormat = tr("yyyy-MM-dd 'at' HH.mm.ss")
+        return tr("Screen Recording %@", f.string(from: date))
     }
 
     /// Starts encoding the clip in `format` in the background while the user is still looking at

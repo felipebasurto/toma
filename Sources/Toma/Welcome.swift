@@ -6,7 +6,7 @@ import ServiceManagement
 /// may even hide behind the notch) and offers the three things a newcomer needs: record,
 /// grant permission, open at login.
 final class Welcome: NSObject, NSWindowDelegate {
-    /// Called by "Grabar zona"; Toma starts a selection.
+    /// Called by "Record Region"; Toma starts a selection.
     var onRecord: () -> Void = {}
 
     private var window: NSWindow?
@@ -50,13 +50,13 @@ final class Welcome: NSObject, NSWindowDelegate {
         icon.heightAnchor.constraint(equalToConstant: 96).isActive = true
 
         let title = label("Toma", font: .systemFont(ofSize: 26, weight: .bold), color: .labelColor)
-        let subtitle = label("Vive en la barra de menús.\nGraba una zona de la pantalla con un atajo.",
+        let subtitle = label(tr("Lives in the menu bar.\nRecord a region of your screen with a shortcut."),
                              font: .systemFont(ofSize: 13), color: .secondaryLabelColor)
 
         let keys = NSStackView(views: ["⌥", "⇧", "⌘", "4"].map(keycap))
         keys.spacing = 6
 
-        let record = NSButton(title: "Grabar zona", target: self, action: #selector(recordNow))
+        let record = NSButton(title: tr("Record Region"), target: self, action: #selector(recordNow))
         record.bezelStyle = .push
         record.controlSize = .large
         record.keyEquivalent = "\r"
@@ -68,14 +68,14 @@ final class Welcome: NSObject, NSWindowDelegate {
         let warning = NSImageView(image: NSImage(systemSymbolName: "exclamationmark.circle.fill", accessibilityDescription: nil)!)
         warning.contentTintColor = .systemOrange
         permission.addArrangedSubview(warning)
-        permission.addArrangedSubview(label("Falta el permiso de Grabación de pantalla.", font: .systemFont(ofSize: 12), color: .secondaryLabelColor))
-        let grant = NSButton(title: "Permitir…", target: self, action: #selector(grantPermission))
+        permission.addArrangedSubview(label(tr("Screen Recording permission is missing."), font: .systemFont(ofSize: 12), color: .secondaryLabelColor))
+        let grant = NSButton(title: tr("Allow…"), target: self, action: #selector(grantPermission))
         grant.bezelStyle = .inline
         grant.controlSize = .small
         permission.addArrangedSubview(grant)
         permissionRow = permission
 
-        let login = NSButton(checkboxWithTitle: "Abrir al iniciar sesión", target: self, action: #selector(toggleLogin(_:)))
+        let login = NSButton(checkboxWithTitle: tr("Open at Login"), target: self, action: #selector(toggleLogin(_:)))
         login.font = .systemFont(ofSize: 12)
         loginBox = login
 

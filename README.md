@@ -28,7 +28,7 @@ no settings window, no account and no editor. It records a region of your screen
 2. Open it. Toma is signed and notarized by Apple, so it opens without warnings.
 3. Grant the **Screen Recording** permission, then reopen Toma.
 
-Requires macOS 26 or later. It is universal (Apple silicon and Intel) and weighs less than 1 MB.
+Requires macOS 26 or later. It is universal (Apple silicon and Intel) and weighs less than 1 MB. The interface is in English and Spanish, following your system language. Toma checks GitHub for new versions once a day and updates itself from the menu (**Update to Toma…**).
 
 ## Usage
 
