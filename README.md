@@ -8,7 +8,7 @@
 Record a region of your Mac screen and save it as MP4, HEVC or GIF. Nothing else.
 
 [![Version](https://img.shields.io/github/v/release/felipebasurto/toma?label=version&color=2383E2)](https://github.com/felipebasurto/toma/releases/latest)
-[![macOS](https://img.shields.io/badge/macOS-26%2B-37352F)](https://github.com/felipebasurto/toma/releases/latest)
+[![macOS](https://img.shields.io/badge/macOS-15.3%2B-37352F)](https://github.com/felipebasurto/toma/releases/latest)
 [![Swift](https://img.shields.io/badge/Swift-6.2-F05138)](https://swift.org)
 [![License](https://img.shields.io/github/license/felipebasurto/toma?label=license&color=787774)](LICENSE)
 
@@ -28,7 +28,7 @@ no settings window, no account and no editor. It records a region of your screen
 2. Open it. Toma is signed and notarized by Apple, so it opens without warnings.
 3. Grant the **Screen Recording** permission, then reopen Toma.
 
-Requires macOS 26 or later. It is universal (Apple silicon and Intel) and weighs less than 1 MB. The interface is in English and Spanish, following your system language. Toma checks GitHub for new versions once a day and updates itself from the menu (**Update to Toma…**).
+Requires macOS 15.3 or later (Sequoia 15.3 through the current release). It is universal (Apple silicon and Intel) and weighs less than 1 MB. The interface is in English and Spanish, following your system language. Toma checks GitHub for new versions once a day and updates itself from the menu (**Update to Toma…**).
 
 ## Usage
 

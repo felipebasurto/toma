@@ -6,6 +6,18 @@ Todos los cambios relevantes se documentan aquí. El formato sigue
 
 ## [Unreleased]
 
+## [1.4.0] - 2026-11-13
+
+### Cambiado
+
+- **macOS 15.3 o posterior.** Toma abre en Sequoia 15.3 y en las versiones que hay desde ahí
+  hasta macOS 26.
+
+### Corregido
+
+- Al parar, la grabación se cierra aunque Sequoia no avise de que el archivo ya está listo.
+  En macOS 26 el aviso sigue llegando y el resultado es el mismo.
+
 ## [1.3.0] - 2026-11-05
 
 ### Añadido
@@ -70,7 +82,9 @@ Todos los cambios relevantes se documentan aquí. El formato sigue
 - Miniatura tras grabar con MP4 o GIF y arrastrar para compartir.
 - Grabación a resolución nativa (Retina) con ScreenCaptureKit, sin que Toma salga en el vídeo.
 
-[Unreleased]: https://github.com/felipebasurto/toma/compare/v1.2.0...HEAD
+[Unreleased]: https://github.com/felipebasurto/toma/compare/v1.4.0...HEAD
+[1.4.0]: https://github.com/felipebasurto/toma/compare/v1.3.0...v1.4.0
+[1.3.0]: https://github.com/felipebasurto/toma/compare/v1.2.0...v1.3.0
 [1.2.0]: https://github.com/felipebasurto/toma/compare/v1.1...v1.2.0
 [1.1.0]: https://github.com/felipebasurto/toma/releases/tag/v1.1
 [1.0.0]: https://github.com/felipebasurto/toma/commits/main

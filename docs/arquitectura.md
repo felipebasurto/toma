@@ -2,7 +2,7 @@
 
 ## Problem
 
-The user wants ⇧⌘4 for video: pick a region, record it, and get an MP4 or a GIF, with nothing else on top. The shape is not obvious for four reasons. (1) ScreenCaptureKit records one display per stream, in display-local top-left points. AppKit draws in global bottom-left points. Retina needs pixel sizes, and H.264 needs even pixel sizes. Getting any of these conversions wrong gives a video that is offset by a few pixels or slightly blurry. (2) Toma's own windows (the selection veil, the recording frame, the result card) must never appear in the video. (3) Screen Recording permission (TCC) only takes effect after a relaunch, and the user must not find that out after dragging a region. (4) "MP4 or GIF" is a choice, and every choice adds UI. The design question is when to ask it so that it costs the user close to nothing. Constraints: macOS 26, Swift 6.2, SwiftPM only, no dependencies, English and Spanish UI (the system language picks; English is the fallback).
+The user wants ⇧⌘4 for video: pick a region, record it, and get an MP4 or a GIF, with nothing else on top. The shape is not obvious for four reasons. (1) ScreenCaptureKit records one display per stream, in display-local top-left points. AppKit draws in global bottom-left points. Retina needs pixel sizes, and H.264 needs even pixel sizes. Getting any of these conversions wrong gives a video that is offset by a few pixels or slightly blurry. (2) Toma's own windows (the selection veil, the recording frame, the result card) must never appear in the video. (3) Screen Recording permission (TCC) only takes effect after a relaunch, and the user must not find that out after dragging a region. (4) "MP4 or GIF" is a choice, and every choice adds UI. The design question is when to ask it so that it costs the user close to nothing. Constraints: macOS 15.3 or later (Sequoia 15.3 through the current release), Swift 6.2, SwiftPM only, no dependencies, English and Spanish UI (the system language picks; English is the fallback).
 
 ## Usage (caller's view)
 
@@ -74,7 +74,7 @@ Eight files, one target (`Sources/Toma/`). Default isolation is `MainActor`, and
 
 **What it does not do:** audio, window-mode capture, countdown, trimming, an editor, clipboard copy, custom shortcuts, quality settings, cloud upload, or a Dock icon. The GIF policy (20 fps, longest edge 960 px, infinite loop) is fixed on purpose. 20 fps gives an exact 5/100 s GIF delay, whereas 30 fps would judder.
 
-**Typecheck:** `swiftc -typecheck -default-isolation MainActor -swift-version 6 -target arm64-apple-macos26.0 -sdk $(xcrun --show-sdk-path) Sources/Toma/*.swift` passes with no warnings, and `swift build` links. `build.sh` wraps the binary into `Toma.app` (with an LSUIElement Info.plist and `NSScreenCaptureUsageDescription`) and signs it ad hoc.
+**Typecheck:** `swiftc -typecheck -default-isolation MainActor -swift-version 6 -target arm64-apple-macos15.3 -sdk $(xcrun --show-sdk-path) Sources/Toma/*.swift` passes with no warnings, and `swift build` links. `build.sh` wraps the binary into `Toma.app` (with an LSUIElement Info.plist and `NSScreenCaptureUsageDescription`) and signs it ad hoc.
 
 ## Synthesis decision
 

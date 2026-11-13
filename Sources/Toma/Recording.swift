@@ -99,15 +99,18 @@ final class Recording {
     /// stream, later calls do nothing. The result arrives through `clip`.
     ///
     /// The file is finalized by removing the recording output first, then stopping the stream.
-    /// If neither call settles within a few seconds, the recording is closed with whatever
-    /// reached the disk, so the menu bar can never stay stuck on the timer.
+    /// macOS 26 then calls `recordingOutputDidFinishRecording`. Sequoia 15.3 often does not,
+    /// so the stop settles the recording itself once those calls return; a second settle is a
+    /// no-op. If neither call returns within a few seconds, the recording is closed with
+    /// whatever reached the disk, so the menu bar can never stay stuck on the timer.
     func stop() {
         guard !stopRequested else { return }
         stopRequested = true
         let stream = self.stream, output = self.output, sink = self.sink
         Task {
             try? stream.removeRecordingOutput(output)
-            do { try await stream.stopCapture() } catch { sink.streamEnded() }
+            try? await stream.stopCapture()
+            sink.streamEnded()
         }
         Task {
             try? await Task.sleep(for: .seconds(5))
