@@ -31,10 +31,14 @@ enum Overlay {
 
     /// Owns the frame window. `close()` is idempotent; deinit also closes.
     final class FrameHandle {
-        private var window: NSWindow?
+        /// Same reason as Hotkey: deinit must run on macOS 15.3, without `isolated deinit`.
+        private nonisolated(unsafe) var window: NSWindow?
         fileprivate init(window: NSWindow) { self.window = window }
         func close() { window?.orderOut(nil); window = nil }
-        isolated deinit { window?.orderOut(nil) }
+        nonisolated deinit {
+            guard Thread.isMainThread else { return }
+            window?.orderOut(nil)
+        }
     }
 
     fileprivate static func chromeWindow(frame: CGRect) -> NSWindow {

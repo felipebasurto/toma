@@ -60,8 +60,11 @@ final class Hotkey {
     }
 
     private let action: () -> Void
-    private var hotKeyRef: EventHotKeyRef?
-    private var handlerRef: EventHandlerRef?
+    /// Written in init and read in deinit, both on the main thread. `nonisolated` so deinit
+    /// does not need `isolated deinit`, whose runtime only exists on macOS 15.4 and whose
+    /// fallback crashes on 15.3.
+    private nonisolated(unsafe) var hotKeyRef: EventHotKeyRef?
+    private nonisolated(unsafe) var handlerRef: EventHandlerRef?
 
     /// If another app owns the chord, registration fails quietly: the menu bar still works.
     init(_ chord: Chord, action: @escaping () -> Void) {
@@ -78,7 +81,8 @@ final class Hotkey {
                             GetApplicationEventTarget(), 0, &hotKeyRef)
     }
 
-    isolated deinit {
+    nonisolated deinit {
+        guard Thread.isMainThread else { return }
         if let hotKeyRef { UnregisterEventHotKey(hotKeyRef) }
         if let handlerRef { RemoveEventHandler(handlerRef) }
     }
