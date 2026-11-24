@@ -116,17 +116,20 @@ final class Recording {
     /// Requests the end of the recording. Idempotent and non-blocking: the first call stops the
     /// stream, later calls do nothing. The result arrives through `clip`.
     ///
-    /// The file is finalized by removing the recording output first, then stopping the stream.
-    /// macOS 26 then calls `recordingOutputDidFinishRecording`. Sequoia 15.3 often does not,
-    /// so the stop settles the recording itself once those calls return; a second settle is a
-    /// no-op. If neither call returns within a few seconds, the recording is closed with
-    /// whatever reached the disk, so the menu bar can never stay stuck on the timer.
+    /// Stopping the stream finalizes the file; macOS 26 then calls
+    /// `recordingOutputDidFinishRecording` within a few milliseconds. Sequoia 15.3 often does not,
+    /// so the stop settles the recording itself once `stopCapture` returns; a second settle is a
+    /// no-op. If neither happens within a few seconds, the recording is closed with whatever
+    /// reached the disk, so the menu bar can never stay stuck on the timer.
+    ///
+    /// Never remove the recording output before stopping: on macOS 26.6 that interrupts the
+    /// stream (SCStreamError -3805, then RPRecordingError -5814) and the MP4 is often never
+    /// finalized. Toma 1.3.0–1.5.0 did that and lost recordings.
     func stop() {
         guard !stopRequested else { return }
         stopRequested = true
-        let stream = self.stream, output = self.output, sink = self.sink
+        let stream = self.stream, sink = self.sink
         Task {
-            try? stream.removeRecordingOutput(output)
             try? await stream.stopCapture()
             sink.streamEnded()
         }
@@ -146,14 +149,26 @@ final class Recording {
             let result: Result<Clip, TomaError>
             if case .failed(let reason) = outcome, !FileManager.default.fileExists(atPath: master.path) {
                 result = .failure(.streamFailed(underlying: reason))
-            } else if let duration = try? await AVURLAsset(url: master).load(.duration), duration.seconds > 0 {
-                result = .success(Clip(master: master, duration: duration.seconds, region: region))
+            } else if let duration = await Self.playableDuration(master) {
+                result = .success(Clip(master: master, duration: duration, region: region))
             } else {
                 result = .failure(.streamFailed(underlying: "empty file"))
             }
             finished = result
             return try result.get()
         }
+    }
+
+    /// The file's duration once it is readable. A failure callback can arrive a moment before the
+    /// writer finishes the file, so this keeps trying for up to 3 s before calling it empty.
+    private static func playableDuration(_ url: URL) async -> Double? {
+        for attempt in 0..<30 {
+            if attempt > 0 { try? await Task.sleep(for: .milliseconds(100)) }
+            if let duration = try? await AVURLAsset(url: url).load(.duration), duration.seconds > 0 {
+                return duration.seconds
+            }
+        }
+        return nil
     }
 
     private let stream: SCStream

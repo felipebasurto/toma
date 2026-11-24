@@ -6,6 +6,16 @@ Todos los cambios relevantes se documentan aquí. El formato sigue
 
 ## [Unreleased]
 
+## [1.5.1] - 2026-11-24
+
+### Corregido
+
+- **Las grabaciones ya no se pierden al parar.** Desde la 1.3.0, Toma quitaba la salida de
+  grabación antes de detener la captura. En macOS 26.6 eso interrumpe la captura y el vídeo a
+  menudo no se terminaba de escribir: al parar salía «La grabación se interrumpió». Ahora se
+  detiene la captura primero (como en la 1.2.0) y, si el aviso de fin llega antes de que el
+  archivo esté listo, Toma espera a que lo esté.
+
 ## [1.5.0] - 2026-11-24
 
 ### Añadido
@@ -92,7 +102,8 @@ Todos los cambios relevantes se documentan aquí. El formato sigue
 - Miniatura tras grabar con MP4 o GIF y arrastrar para compartir.
 - Grabación a resolución nativa (Retina) con ScreenCaptureKit, sin que Toma salga en el vídeo.
 
-[Unreleased]: https://github.com/felipebasurto/toma/compare/v1.5.0...HEAD
+[Unreleased]: https://github.com/felipebasurto/toma/compare/v1.5.1...HEAD
+[1.5.1]: https://github.com/felipebasurto/toma/compare/v1.5.0...v1.5.1
 [1.5.0]: https://github.com/felipebasurto/toma/compare/v1.4.0...v1.5.0
 [1.4.0]: https://github.com/felipebasurto/toma/compare/v1.3.0...v1.4.0
 [1.3.0]: https://github.com/felipebasurto/toma/compare/v1.2.0...v1.3.0
