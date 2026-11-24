@@ -6,6 +6,8 @@ Todos los cambios relevantes se documentan aquí. El formato sigue
 
 ## [Unreleased]
 
+## [1.5.0] - 2026-11-24
+
 ### Añadido
 
 - **Confirmar la zona antes de grabar** (desactivado por defecto, en el menú). Tras arrastrar una
@@ -90,7 +92,8 @@ Todos los cambios relevantes se documentan aquí. El formato sigue
 - Miniatura tras grabar con MP4 o GIF y arrastrar para compartir.
 - Grabación a resolución nativa (Retina) con ScreenCaptureKit, sin que Toma salga en el vídeo.
 
-[Unreleased]: https://github.com/felipebasurto/toma/compare/v1.4.0...HEAD
+[Unreleased]: https://github.com/felipebasurto/toma/compare/v1.5.0...HEAD
+[1.5.0]: https://github.com/felipebasurto/toma/compare/v1.4.0...v1.5.0
 [1.4.0]: https://github.com/felipebasurto/toma/compare/v1.3.0...v1.4.0
 [1.3.0]: https://github.com/felipebasurto/toma/compare/v1.2.0...v1.3.0
 [1.2.0]: https://github.com/felipebasurto/toma/compare/v1.1...v1.2.0

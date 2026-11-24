@@ -9,9 +9,11 @@ BUILD=$(git rev-list --count HEAD 2>/dev/null || echo 1)
 
 # Universal binary: Apple silicon and Intel.
 swift build -c release --arch arm64 --arch x86_64
+# Ask SwiftPM where it put the binary: the folder moved between toolchains (.build/apple → .build/out).
+BIN=$(swift build -c release --arch arm64 --arch x86_64 --show-bin-path)
 APP=Toma.app
 rm -rf "$APP"; mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
-cp .build/apple/Products/Release/Toma "$APP/Contents/MacOS/Toma"
+cp "$BIN/Toma" "$APP/Contents/MacOS/Toma"
 cp Resources/Toma.icns "$APP/Contents/Resources/Toma.icns"
 # English is the base; the Spanish lproj covers the Spanish UI (Strings.swift uses the English text as key).
 for L in en es; do cp -R "Resources/$L.lproj" "$APP/Contents/Resources/$L.lproj"; done
