@@ -6,14 +6,14 @@ Todos los cambios relevantes se documentan aquí. El formato sigue
 
 ## [Unreleased]
 
+## [1.6.0] - 2026-11-24
+
 ### Añadido
 
 - **Vista previa en grande.** Haz clic en la miniatura y el vídeo se abre a buen tamaño, con
   sonido y barra para avanzar, como la miniatura de las capturas al abrirse en Markup. Desde ahí:
   «Descartar» (⌘⌫), «Copiar» (⌘C) o guardar en MP4, HEVC o GIF (Return guarda el de siempre).
   La cuenta atrás de 6 s espera mientras está abierta; Esc vuelve a la miniatura.
-
-## [1.6.0] - 2026-11-24
 
 ### Cambiado
 
