@@ -77,6 +77,7 @@ In the menu bar, each one shows its current value:
 - **Save to**: a folder of your choice, or the same one screenshots use (default).
 - **GIF size**: *Sharp* (full resolution, 20 fps) or *Light* (640 px, 15 fps).
 - **Sound**: no sound, the Mac's sound, or the Mac's sound and your microphone.
+- **Confirm Area Before Recording** (off by default): after you drag a region, Toma shows it with the red outline and asks **Record**, **Redraw** or **Cancel**. Nothing is recorded until you press Record.
 - **Open at login**.
 
 ## Privacy

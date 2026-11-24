@@ -134,6 +134,10 @@ final class StatusItem: NSObject {
         sound.submenu = soundMenu
         menu.addItem(sound)
 
+        let confirm = item(tr("Confirm Area Before Recording"), #selector(toggleConfirmArea))
+        confirm.state = Preferences.confirmsArea ? .on : .off
+        menu.addItem(confirm)
+
         menu.addItem(.separator())
         let login = item(tr("Open at Login"), #selector(toggleLogin))
         login.state = SMAppService.mainApp.status == .enabled ? .on : .off
@@ -165,6 +169,8 @@ final class StatusItem: NSObject {
             Preferences.choose(audio)
         }
     }
+
+    @objc private func toggleConfirmArea() { Preferences.confirmsArea.toggle() }
 
     /// A brief checkmark after copying to the clipboard: the only confirmation, and it's enough.
     func flash() {

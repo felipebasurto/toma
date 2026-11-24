@@ -18,6 +18,26 @@ enum Overlay {
         }
     }
 
+    enum Confirmation { case record, redraw, cancel }
+
+    /// Asks whether the area outlined by `frame(around:)` is the right one. Shown only when
+    /// Preferences.confirmsArea is on. Return records, Esc cancels, "Redraw" selects again.
+    static func confirm(_ region: ScreenRegion) -> Confirmation {
+        NSApp.activate()
+        let (width, height) = region.pixelSize
+        let alert = NSAlert()
+        alert.messageText = tr("Record this area?")
+        alert.informativeText = tr("%d × %d px. The red outline marks what will be recorded.", width, height)
+        alert.addButton(withTitle: tr("Record"))
+        alert.addButton(withTitle: tr("Redraw"))
+        alert.addButton(withTitle: tr("Cancel")).keyEquivalent = "\u{1b}"
+        switch alert.runModal() {
+        case .alertFirstButtonReturn: return .record
+        case .alertSecondButtonReturn: return .redraw
+        default: return .cancel
+        }
+    }
+
     /// A 1-pt hairline drawn *just outside* the region (so it is never inside sourceRect even
     /// before exclusion applies), plus nothing else: no timer, no button — the menu bar has those.
     /// Click-through so the recorded content stays usable.

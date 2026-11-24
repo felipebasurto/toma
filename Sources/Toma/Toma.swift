@@ -60,7 +60,11 @@ final class Toma {
     /// One capture, start to finish. Every exit path returns to `.idle` (set by `toggle`).
     private func session() async {
         guard Recording.ensureAccess() else { return }
-        guard let region = await Overlay.select() else { return }    // Esc / tiny drag = nothing happened
+        guard var region = await Overlay.select() else { return }    // Esc / tiny drag = nothing happened
+        if Preferences.confirmsArea {
+            guard let confirmed = await confirm(region) else { return }
+            region = confirmed
+        }
 
         let recording: Recording
         do { recording = try await Recording.start(region) } catch { return present(error) }
@@ -97,6 +101,24 @@ final class Toma {
             // Never lose a recording: if an export fails, the master still is a valid MP4.
             if (try? await Library.save(clip, as: .mp4)) != nil { return }
             present(error)
+        }
+    }
+
+    /// Shows the chosen area, outlined as it will be recorded, until the user records it, draws it
+    /// again or cancels. Nil means nothing is recorded.
+    private func confirm(_ first: ScreenRegion) async -> ScreenRegion? {
+        var region = first
+        while true {
+            let frame = Overlay.frame(around: region)
+            let choice = Overlay.confirm(region)
+            frame.close()
+            switch choice {
+            case .record: return region
+            case .redraw:
+                guard let again = await Overlay.select() else { return nil }
+                region = again
+            case .cancel: return nil
+            }
         }
     }
 

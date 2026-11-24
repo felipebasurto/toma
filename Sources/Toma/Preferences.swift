@@ -57,6 +57,13 @@ enum Preferences {
         set { UserDefaults.standard.set(newValue.rawValue, forKey: "sonido") }
     }
 
+    /// Off by default: the area is recorded as soon as it is drawn. On: the area is shown and must be
+    /// confirmed (Record, Redraw or Cancel) before recording starts.
+    static var confirmsArea: Bool {
+        get { UserDefaults.standard.bool(forKey: "confirmarArea") }
+        set { UserDefaults.standard.set(newValue, forKey: "confirmarArea") }
+    }
+
     /// Asks for the microphone when the user picks it, not in the middle of a recording.
     /// Falls back to system sound only if access is refused.
     static func choose(_ audio: Audio) {

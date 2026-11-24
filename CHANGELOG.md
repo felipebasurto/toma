@@ -6,6 +6,12 @@ Todos los cambios relevantes se documentan aquí. El formato sigue
 
 ## [Unreleased]
 
+### Añadido
+
+- **Confirmar la zona antes de grabar** (desactivado por defecto, en el menú). Tras arrastrar una
+  zona, Toma la muestra con el contorno rojo y pregunta si grabar, volver a dibujarla o cancelar.
+  Nada se graba hasta pulsar «Grabar».
+
 ## [1.4.0] - 2026-11-13
 
 ### Cambiado

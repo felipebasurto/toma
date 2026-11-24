@@ -49,3 +49,9 @@
 "Toma %@ is available." = "Toma %@ is available.";
 "Update" = "Update";
 "Later" = "Later";
+"Confirm Area Before Recording" = "Confirm Area Before Recording";
+"Record this area?" = "Record this area?";
+"%d × %d px. The red outline marks what will be recorded." = "%d × %d px. The red outline marks what will be recorded.";
+"Record" = "Record";
+"Redraw" = "Redraw";
+"Cancel" = "Cancel";

@@ -5,6 +5,12 @@
 "Show in Finder" = "Mostrar en Finder";
 "GIF Size" = "Tamaño del GIF";
 "Sound" = "Sonido";
+"Confirm Area Before Recording" = "Confirmar la zona antes de grabar";
+"Record this area?" = "¿Grabar esta zona?";
+"%d × %d px. The red outline marks what will be recorded." = "%d × %d px. La línea roja marca lo que se grabará.";
+"Record" = "Grabar";
+"Redraw" = "Volver a dibujar";
+"Cancel" = "Cancelar";
 "Open at Login" = "Abrir al iniciar sesión";
 "Check for Updates…" = "Buscar actualizaciones…";
 "Update to Toma %@…" = "Actualizar a Toma %@…";
