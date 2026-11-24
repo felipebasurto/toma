@@ -75,6 +75,18 @@ enum Preferences {
         }
     }
 
+    /// "Save to: [📁 Desktop]". The button shows where recordings go and changes it.
+    /// Shared by the welcome window and the area confirmation.
+    static func folderRow() -> NSStackView {
+        let caption = NSTextField(labelWithString: tr("Save to:"))
+        caption.font = .systemFont(ofSize: 12)
+        caption.textColor = .secondaryLabelColor
+        let row = NSStackView(views: [caption, FolderButton()])
+        row.orientation = .horizontal
+        row.spacing = 6
+        return row
+    }
+
     /// Lets the user pick the folder recordings go to.
     static func chooseFolder() {
         NSApp.activate()
@@ -86,5 +98,36 @@ enum Preferences {
         panel.message = tr("Choose where to save recordings.")
         panel.directoryURL = Library.destination
         if panel.runModal() == .OK, let url = panel.url { folder = url }
+    }
+}
+
+/// Shows the current destination (icon and name, full path on hover); a click picks another.
+final class FolderButton: NSButton {
+    init() {
+        super.init(frame: .zero)
+        bezelStyle = .push
+        controlSize = .small
+        font = .systemFont(ofSize: 12)
+        imagePosition = .imageLeading
+        target = self
+        action = #selector(choose)
+        refresh()
+    }
+
+    required init?(coder: NSCoder) { fatalError() }
+
+    /// Re-reads the destination: it can change from the menu while the button is on screen.
+    func refresh() {
+        let url = Library.destination
+        title = FileManager.default.displayName(atPath: url.path)
+        let icon = NSWorkspace.shared.icon(forFile: url.path)
+        icon.size = CGSize(width: 16, height: 16)
+        image = icon
+        toolTip = url.path
+    }
+
+    @objc private func choose() {
+        Preferences.chooseFolder()
+        refresh()
     }
 }

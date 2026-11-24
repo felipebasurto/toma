@@ -21,13 +21,16 @@ enum Overlay {
     enum Confirmation { case record, redraw, cancel }
 
     /// Asks whether the area outlined by `frame(around:)` is the right one. Shown only when
-    /// Preferences.confirmsArea is on. Return records, Esc cancels, "Redraw" selects again.
-    static func confirm(_ region: ScreenRegion) -> Confirmation {
+    /// Preferences.confirmsArea is on. `preview` is a still of exactly what will be recorded
+    /// (Recording.snapshot); below it, where the file will go, changeable right there.
+    /// Return records, Esc cancels, "Redraw" selects again.
+    static func confirm(_ region: ScreenRegion, preview: CGImage?) -> Confirmation {
         NSApp.activate()
         let (width, height) = region.pixelSize
         let alert = NSAlert()
         alert.messageText = tr("Record this area?")
-        alert.informativeText = tr("%d × %d px. The red outline marks what will be recorded.", width, height)
+        alert.informativeText = tr("%d × %d px, exactly as shown. The red outline marks it on screen.", width, height)
+        alert.accessoryView = confirmAccessory(preview: preview, aspect: CGFloat(width) / CGFloat(height))
         alert.addButton(withTitle: tr("Record"))
         alert.addButton(withTitle: tr("Redraw"))
         alert.addButton(withTitle: tr("Cancel")).keyEquivalent = "\u{1b}"
@@ -36,6 +39,33 @@ enum Overlay {
         case .alertSecondButtonReturn: return .redraw
         default: return .cancel
         }
+    }
+
+    /// The preview, fitted inside 300 × 190 pt with a hairline edge, and the "Save to" row.
+    private static func confirmAccessory(preview: CGImage?, aspect: CGFloat) -> NSView {
+        let width: CGFloat = 300
+        var views: [NSView] = []
+        if let preview {
+            let fitted = aspect >= width / 190 ? CGSize(width: width, height: width / aspect)
+                                               : CGSize(width: 190 * aspect, height: 190)
+            let image = NSImageView(image: NSImage(cgImage: preview, size: fitted))
+            image.imageScaling = .scaleProportionallyUpOrDown
+            image.wantsLayer = true
+            image.layer?.borderWidth = 1
+            image.layer?.borderColor = NSColor.separatorColor.cgColor
+            image.widthAnchor.constraint(equalToConstant: fitted.width).isActive = true
+            image.heightAnchor.constraint(equalToConstant: fitted.height).isActive = true
+            views.append(image)
+        }
+        views.append(Preferences.folderRow())
+        let stack = NSStackView(views: views)
+        stack.orientation = .vertical
+        stack.alignment = .leading
+        stack.spacing = 10
+        stack.widthAnchor.constraint(equalToConstant: width).isActive = true
+        stack.layoutSubtreeIfNeeded()
+        stack.frame = CGRect(origin: .zero, size: stack.fittingSize)
+        return stack
     }
 
     /// A 1-pt hairline drawn *just outside* the region (so it is never inside sourceRect even

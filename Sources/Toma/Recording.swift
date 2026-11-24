@@ -36,6 +36,28 @@ final class Recording {
         return false
     }
 
+    /// A still of `region` exactly as the recording would see it now: same filter (Toma excluded),
+    /// same crop, same pixel size. For the confirmation step; nil if it can't be taken.
+    static func snapshot(_ region: ScreenRegion) async -> CGImage? {
+        guard let content = try? await SCShareableContent.excludingDesktopWindows(false, onScreenWindowsOnly: false),
+              let filter = filter(for: region, in: content) else { return nil }
+        let config = SCStreamConfiguration()
+        config.sourceRect = region.sourceRect
+        (config.width, config.height) = region.pixelSize
+        config.scalesToFit = false
+        config.captureResolution = .best
+        config.showsCursor = false
+        config.colorSpaceName = CGColorSpace.sRGB
+        return try? await SCScreenshotManager.captureImage(contentFilter: filter, configuration: config)
+    }
+
+    /// The region's display with Toma's own windows left out.
+    private static func filter(for region: ScreenRegion, in content: SCShareableContent) -> SCContentFilter? {
+        guard let display = content.displays.first(where: { $0.displayID == region.displayID }) else { return nil }
+        let me = content.applications.filter { $0.processID == getpid() }
+        return SCContentFilter(display: display, excludingApplications: me, exceptingWindows: [])
+    }
+
     /// Starts capturing `region`. Returns once the file is being written, so the
     /// menu-bar timer starts at the real start of the file.
     ///
@@ -48,11 +70,7 @@ final class Recording {
         } catch {
             throw .permissionDenied
         }
-        guard let display = content.displays.first(where: { $0.displayID == region.displayID }) else {
-            throw .displayUnavailable
-        }
-        let me = content.applications.filter { $0.processID == getpid() }
-        let filter = SCContentFilter(display: display, excludingApplications: me, exceptingWindows: [])
+        guard let filter = filter(for: region, in: content) else { throw .displayUnavailable }
 
         let config = SCStreamConfiguration()
         config.sourceRect = region.sourceRect

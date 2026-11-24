@@ -12,6 +12,8 @@ final class Welcome: NSObject, NSWindowDelegate {
     private var window: NSWindow?
     private var permissionRow: NSView?
     private var loginBox: NSButton?
+    private var confirmBox: NSButton?
+    private var folderRow: NSStackView?
 
     private static let seenKey = "bienvenidaVista"
 
@@ -35,7 +37,7 @@ final class Welcome: NSObject, NSWindowDelegate {
     // MARK: building
 
     private func build() -> NSWindow {
-        let window = NSWindow(contentRect: CGRect(x: 0, y: 0, width: 400, height: 470),
+        let window = NSWindow(contentRect: CGRect(x: 0, y: 0, width: 400, height: 530),
                               styleMask: [.titled, .closable, .fullSizeContentView], backing: .buffered, defer: false)
         window.titlebarAppearsTransparent = true
         window.titleVisibility = .hidden
@@ -79,7 +81,20 @@ final class Welcome: NSObject, NSWindowDelegate {
         login.font = .systemFont(ofSize: 12)
         loginBox = login
 
-        let stack = NSStackView(views: [icon, title, subtitle, keys, record, permission, login])
+        let confirm = NSButton(checkboxWithTitle: tr("Confirm Area Before Recording"), target: self, action: #selector(toggleConfirm(_:)))
+        confirm.font = .systemFont(ofSize: 12)
+        confirm.toolTip = tr("After you draw the area, see exactly what will be recorded and confirm it.")
+        confirmBox = confirm
+
+        let folder = Preferences.folderRow()
+        folderRow = folder
+
+        let options = NSStackView(views: [folder, login, confirm])
+        options.orientation = .vertical
+        options.alignment = .leading
+        options.spacing = 8
+
+        let stack = NSStackView(views: [icon, title, subtitle, keys, record, permission, options])
         stack.orientation = .vertical
         stack.alignment = .centerX
         stack.spacing = 14
@@ -150,6 +165,8 @@ final class Welcome: NSObject, NSWindowDelegate {
     private func refresh() {
         permissionRow?.isHidden = CGPreflightScreenCaptureAccess()
         loginBox?.state = SMAppService.mainApp.status == .enabled ? .on : .off
+        confirmBox?.state = Preferences.confirmsArea ? .on : .off
+        folderRow?.arrangedSubviews.compactMap { $0 as? FolderButton }.forEach { $0.refresh() }
     }
 
     // MARK: actions
@@ -168,6 +185,10 @@ final class Welcome: NSObject, NSWindowDelegate {
         let service = SMAppService.mainApp
         try? sender.state == .on ? service.register() : service.unregister()
         refresh()
+    }
+
+    @objc private func toggleConfirm(_ sender: NSButton) {
+        Preferences.confirmsArea = sender.state == .on
     }
 
     func windowDidBecomeKey(_ notification: Notification) { refresh() }

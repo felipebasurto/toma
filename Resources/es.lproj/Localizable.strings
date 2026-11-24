@@ -7,7 +7,9 @@
 "Sound" = "Sonido";
 "Confirm Area Before Recording" = "Confirmar la zona antes de grabar";
 "Record this area?" = "¿Grabar esta zona?";
-"%d × %d px. The red outline marks what will be recorded." = "%d × %d px. La línea roja marca lo que se grabará.";
+"%d × %d px, exactly as shown. The red outline marks it on screen." = "%d × %d px, tal como se ve. La línea roja la marca en la pantalla.";
+"Save to:" = "Guardar en:";
+"After you draw the area, see exactly what will be recorded and confirm it." = "Después de dibujar la zona, ves exactamente lo que se grabará y lo confirmas.";
 "Record" = "Grabar";
 "Redraw" = "Volver a dibujar";
 "Cancel" = "Cancelar";

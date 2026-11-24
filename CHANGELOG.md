@@ -9,8 +9,10 @@ Todos los cambios relevantes se documentan aquí. El formato sigue
 ### Añadido
 
 - **Confirmar la zona antes de grabar** (desactivado por defecto, en el menú). Tras arrastrar una
-  zona, Toma la muestra con el contorno rojo y pregunta si grabar, volver a dibujarla o cancelar.
-  Nada se graba hasta pulsar «Grabar».
+  zona, Toma enseña una imagen de exactamente lo que se va a grabar, la marca en rojo en la
+  pantalla, dice dónde se guardará (y deja cambiar la carpeta ahí mismo) y pregunta si grabar,
+  volver a dibujarla o cancelar. Nada se graba hasta pulsar «Grabar».
+- **La ventana de bienvenida** permite elegir la carpeta y activar la confirmación de la zona.
 
 ## [1.4.0] - 2026-11-13
 

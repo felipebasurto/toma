@@ -109,8 +109,9 @@ final class Toma {
     private func confirm(_ first: ScreenRegion) async -> ScreenRegion? {
         var region = first
         while true {
+            let preview = await Recording.snapshot(region)
             let frame = Overlay.frame(around: region)
-            let choice = Overlay.confirm(region)
+            let choice = Overlay.confirm(region, preview: preview)
             frame.close()
             switch choice {
             case .record: return region

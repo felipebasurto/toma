@@ -51,7 +51,9 @@
 "Later" = "Later";
 "Confirm Area Before Recording" = "Confirm Area Before Recording";
 "Record this area?" = "Record this area?";
-"%d × %d px. The red outline marks what will be recorded." = "%d × %d px. The red outline marks what will be recorded.";
+"%d × %d px, exactly as shown. The red outline marks it on screen." = "%d × %d px, exactly as shown. The red outline marks it on screen.";
+"Save to:" = "Save to:";
+"After you draw the area, see exactly what will be recorded and confirm it." = "After you draw the area, see exactly what will be recorded and confirm it.";
 "Record" = "Record";
 "Redraw" = "Redraw";
 "Cancel" = "Cancel";
