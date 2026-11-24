@@ -1,5 +1,6 @@
 import AppKit
 import AVFoundation
+import AVKit
 
 /// After a recording: a floating thumbnail in the bottom-right corner of the screen where the
 /// recording happened — the same place as the ⇧⌘4 thumbnail — playing the clip muted on loop,
@@ -12,6 +13,9 @@ import AVFoundation
 /// - Drag the thumbnail into Finder, Mail, Slack… → the file is delivered there, in the
 ///   suggested format, and nowhere else.
 /// - The "×" on hover → discard.
+/// - Click the thumbnail → the clip opens big, with sound and a scrubber, and the same choices
+///   (like the screenshot thumbnail opening into Markup). The countdown waits while it is open;
+///   closing it without choosing (Esc) brings the card back.
 ///
 /// It is the only place the user ever chooses a format, and they choose after seeing the clip.
 final class ResultCard {
@@ -31,6 +35,10 @@ final class ResultCard {
     private var hovering = false
     private var dragging = false
     private var swipe: CGFloat = 0
+    private var resolved = false
+    private var preview: PreviewWindow?
+    /// Whoever was in front before the preview took focus; they get it back when it closes.
+    private var previousApp: NSRunningApplication?
 
     private static let lifetime: Duration = .seconds(6)
 
@@ -52,12 +60,14 @@ final class ResultCard {
 
     private func resolve(_ choice: Choice) {
         timeout?.cancel()
+        resolved = true
+        closePreview()
         decided.resolve(choice)
     }
 
     private func restartTimeout() {
         timeout?.cancel()
-        guard !hovering, !dragging else { return }
+        guard !hovering, !dragging, preview == nil else { return }
         timeout = Task { [weak self, suggested] in
             try? await Task.sleep(for: Self.lifetime)
             guard !Task.isCancelled else { return }
@@ -128,6 +138,43 @@ final class ResultCard {
                 panel.orderOut(nil)
             }
         }
+    }
+
+    // MARK: the big preview
+
+    /// The thumbnail was clicked: the card steps aside for the preview window.
+    fileprivate func expand() {
+        guard !resolved, preview == nil, let panel else { return }
+        timeout?.cancel()
+        let screen = NSScreen.with(displayID: clip.region.displayID) ?? panel.screen ?? NSScreen.main!
+        let window = PreviewWindow(clip: clip, suggested: suggested, owner: self, on: screen)
+        preview = window
+        (panel.contentView as? CardView)?.pause()
+        panel.orderOut(nil)
+        let front = NSWorkspace.shared.frontmostApplication
+        previousApp = front == .current ? nil : front
+        NSApp.activate()
+        window.makeKeyAndOrderFront(nil)
+    }
+
+    /// The preview closed without a choice: the card comes back and its countdown starts over.
+    fileprivate func collapse() {
+        guard preview != nil else { return }    // closed by a choice: nothing to come back to
+        closePreview()
+        hovering = false
+        if let panel {
+            (panel.contentView as? CardView)?.resume()
+            panel.orderFrontRegardless()
+        }
+        restartTimeout()
+    }
+
+    private func closePreview() {
+        guard let window = preview else { return }
+        preview = nil                           // first, so the window's close doesn't collapse
+        window.dismiss()
+        previousApp?.activate()
+        previousApp = nil
     }
 
     // MARK: input from the card view
@@ -286,6 +333,9 @@ private final class CardView: NSVisualEffectView {
         player = nil
     }
 
+    func pause() { player?.pause() }
+    func resume() { closeButton?.isHidden = true; player?.play() }
+
     @objc private func pick(_ sender: NSButton) { owner?.picked(Format.allCases[sender.tag]) }
     @objc private func discard() { owner?.discard() }
     @objc private func copyToClipboard() { owner?.copy() }
@@ -336,11 +386,27 @@ private final class ThumbView: NSView, NSDraggingSource, NSFilePromiseProviderDe
     init(frame: CGRect, owner: ResultCard?) {
         self.owner = owner
         super.init(frame: frame)
+        toolTip = tr("Click to preview. Drag to share.")
+        setAccessibilityElement(true)
+        setAccessibilityRole(.button)
+        setAccessibilityLabel(tr("Preview"))
     }
     required init?(coder: NSCoder) { fatalError() }
 
     override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
     override func mouseDown(with event: NSEvent) { downAt = event.locationInWindow }
+
+    /// A click that never became a drag opens the preview.
+    override func mouseUp(with event: NSEvent) {
+        guard downAt != nil else { return }
+        downAt = nil
+        owner?.expand()
+    }
+
+    override func accessibilityPerformPress() -> Bool {
+        owner?.expand()
+        return true
+    }
 
     override func mouseDragged(with event: NSEvent) {
         guard let start = downAt, let owner else { return }
@@ -398,4 +464,121 @@ private final class ThumbView: NSView, NSDraggingSource, NSFilePromiseProviderDe
             }
         }
     }
+}
+
+/// The clip at a size you can judge it, with sound and a scrubber, and the card's choices:
+/// Return saves in the suggested format, ⌘C copies it, ⌘⌫ discards, Esc goes back to the card.
+private final class PreviewWindow: NSWindow, NSWindowDelegate {
+    private weak var owner: ResultCard?
+    private let player: AVPlayer
+    private let playerView = AVPlayerView()
+
+    init(clip: Clip, suggested: Format, owner: ResultCard, on screen: NSScreen) {
+        self.owner = owner
+        player = AVPlayer(url: clip.master)
+
+        // Native size in points, shrunk to fit the screen; a tiny region grows to 480 pt at most.
+        let bar: CGFloat = 52, minWidth: CGFloat = 560
+        let pixel = clip.region.pixelSize
+        let native = CGSize(width: CGFloat(pixel.width) / screen.backingScaleFactor,
+                            height: CGFloat(pixel.height) / screen.backingScaleFactor)
+        let room = CGSize(width: screen.visibleFrame.width * 0.8, height: screen.visibleFrame.height * 0.8 - bar - 32)
+        let fit = min(room.width / native.width, room.height / native.height,
+                      max(1, 480 / max(native.width, native.height)))
+        let size = CGSize(width: max((native.width * fit).rounded(), minWidth),
+                          height: max((native.height * fit).rounded(), 200) + bar)
+
+        super.init(contentRect: CGRect(origin: .zero, size: size),
+                   styleMask: [.titled, .closable, .resizable], backing: .buffered, defer: false)
+        title = tr("Screen Recording")
+        let seconds = Int(clip.duration.rounded())
+        subtitle = String(format: "%d:%02d · %d × %d px", seconds / 60, seconds % 60, Int(pixel.width), Int(pixel.height))
+        isReleasedWhenClosed = false
+        tabbingMode = .disallowed
+        collectionBehavior = [.moveToActiveSpace, .fullScreenAuxiliary]
+        contentMinSize = CGSize(width: minWidth, height: 200 + bar)
+        delegate = self
+
+        let content = NSView()
+        contentView = content
+        playerView.player = player
+        playerView.controlsStyle = .inline
+        playerView.showsFullScreenToggleButton = true
+        playerView.translatesAutoresizingMaskIntoConstraints = false
+        content.addSubview(playerView)
+
+        let discard = NSButton(title: tr("Discard"), image: symbol("trash"), target: self, action: #selector(discard))
+        discard.imagePosition = .imageLeading
+        discard.hasDestructiveAction = true
+        discard.contentTintColor = .systemRed
+        discard.keyEquivalent = "\u{8}"
+        discard.keyEquivalentModifierMask = .command
+        discard.toolTip = "⌘⌫"
+        discard.translatesAutoresizingMaskIntoConstraints = false
+        content.addSubview(discard)
+
+        let copy = NSButton(title: tr("Copy"), image: symbol("doc.on.doc"), target: self, action: #selector(copyToClipboard))
+        copy.imagePosition = .imageLeading
+        copy.keyEquivalent = "c"
+        copy.keyEquivalentModifierMask = .command
+        copy.toolTip = tr("Copy %@ to clipboard", suggested.label) + "  ⌘C"
+        copy.setAccessibilityLabel(tr("Copy %@ to clipboard", suggested.label))
+
+        let caption = NSTextField(labelWithString: tr("Save as:"))
+        caption.textColor = .secondaryLabelColor
+        let row = NSStackView(views: [copy, caption])
+        row.orientation = .horizontal
+        row.spacing = 8
+        row.setCustomSpacing(20, after: copy)
+        for (i, format) in Format.allCases.enumerated() {
+            let button = NSButton(title: format.label, target: self, action: #selector(pick(_:)))
+            button.tag = i
+            button.toolTip = format.help
+            button.setAccessibilityLabel(tr("Save as %@", format.label))
+            if format == suggested { button.keyEquivalent = "\r" }      // the blue one, Return
+            row.addArrangedSubview(button)
+        }
+        row.translatesAutoresizingMaskIntoConstraints = false
+        content.addSubview(row)
+
+        NSLayoutConstraint.activate([
+            playerView.topAnchor.constraint(equalTo: content.topAnchor),
+            playerView.leadingAnchor.constraint(equalTo: content.leadingAnchor),
+            playerView.trailingAnchor.constraint(equalTo: content.trailingAnchor),
+            playerView.bottomAnchor.constraint(equalTo: content.bottomAnchor, constant: -bar),
+            discard.leadingAnchor.constraint(equalTo: content.leadingAnchor, constant: 16),
+            discard.centerYAnchor.constraint(equalTo: content.bottomAnchor, constant: -bar / 2),
+            row.trailingAnchor.constraint(equalTo: content.trailingAnchor, constant: -16),
+            row.centerYAnchor.constraint(equalTo: discard.centerYAnchor),
+            row.leadingAnchor.constraint(greaterThanOrEqualTo: discard.trailingAnchor, constant: 16),
+        ])
+        initialFirstResponder = playerView                              // Space plays and pauses
+
+        let frame = frameRect(forContentRect: CGRect(origin: .zero, size: size))
+        let visible = screen.visibleFrame
+        setFrameOrigin(CGPoint(x: (visible.midX - frame.width / 2).rounded(), y: (visible.midY - frame.height / 2).rounded()))
+        player.play()
+    }
+
+    private func symbol(_ name: String) -> NSImage {
+        NSImage(systemSymbolName: name, accessibilityDescription: nil) ?? NSImage()
+    }
+
+    /// Closes it for good: a choice was made.
+    func dismiss() {
+        player.pause()
+        playerView.player = nil
+        close()
+    }
+
+    override func cancelOperation(_ sender: Any?) { close() }
+
+    func windowWillClose(_ notification: Notification) {
+        player.pause()
+        owner?.collapse()
+    }
+
+    @objc private func pick(_ sender: NSButton) { owner?.picked(Format.allCases[sender.tag]) }
+    @objc private func discard() { owner?.discard() }
+    @objc private func copyToClipboard() { owner?.copy() }
 }

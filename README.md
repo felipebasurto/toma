@@ -47,6 +47,7 @@ Requires macOS 15.3 or later (Sequoia 15.3 through the current release). It is u
 
 When it ends, a thumbnail appears at the bottom right, like screenshots do:
 
+- **Click it**: the clip opens big, with sound and a scrubber, so you can check it before keeping it. **Discard** (⌘⌫), **Copy** (⌘C) or **MP4 · HEVC · GIF** (Return saves the usual one). The 6 s countdown waits while it is open; Esc takes you back to the thumbnail.
 - **MP4 · HEVC · GIF**: press one to save in that format.
 - **Copy**: puts the file on the clipboard, ready to paste into Slack, Mail or WhatsApp.
 - **Drag**: drop the thumbnail into any app or folder.

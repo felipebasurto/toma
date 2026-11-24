@@ -57,3 +57,8 @@
 "Toma %@ is available." = "Toma %@ está disponible.";
 "Update" = "Actualizar";
 "Later" = "Más tarde";
+
+/* Preview */
+"Click to preview. Drag to share." = "Haz clic para verla en grande. Arrástrala para compartirla.";
+"Preview" = "Vista previa";
+"Save as:" = "Guardar como:";

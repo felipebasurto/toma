@@ -57,3 +57,8 @@
 "Record" = "Record";
 "Redraw" = "Redraw";
 "Cancel" = "Cancel";
+
+/* Preview */
+"Click to preview. Drag to share." = "Click to preview. Drag to share.";
+"Preview" = "Preview";
+"Save as:" = "Save as:";
