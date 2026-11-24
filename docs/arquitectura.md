@@ -142,6 +142,49 @@ Saving MP4/HEVC is a move. With Mac sound and microphone (two tracks), saving mi
 
 MP4 files are about 8 % larger on calm content (quality 0.65 instead of 0.6): the saved generation was spent on quality. **Remaining floor:** MP4/HEVC saves are now bounded by a file move; the GIF is bounded by per-frame palette and LZW work, which is already parallel.
 
+## Revision 1.6.1: every Apple silicon Mac
+
+1.6.0 encoded three files at once (MP4, HEVC, near-lossless GIF source). Measured on an M4 with
+screen content that changes every frame (the worst case: a page scrolling):
+
+- **The media engine is shared and finite.** It sustains about 500 Mpx/s in total, whatever the
+  codec: one 1080p stream runs at ~225 fps, three together at 75 fps; at 2560 × 1664 three
+  together reach only 39 fps, and at 4K a single stream has no headroom left. Earlier chips have
+  less, and video calls use the same engine.
+- **ScreenCaptureKit hides the overload.** The encoders accept frames and queue them, holding their
+  capture buffers; once all 8 are held, ScreenCaptureKit skips frames before Toma sees them. No
+  writer ever refuses a frame, so refusals alone never signal anything.
+- **H.264 has hardware only up to 4096 px per side.** Past that, VideoToolbox switches to software
+  without saying so, and the software encoder rejects `AVVideoQualityKey` with an Objective-C
+  exception: 1.6.0 crashed on any recording wider than 4096 px (full width on a 24" iMac, a Studio
+  Display or a Pro Display XDR). HEVC has hardware up to 8K.
+
+So the engine now budgets the media engine and adapts to the Mac it runs on:
+
+1. **Capture fits 4096 × 4096** (ScreenCaptureKit scales); every file stays on hardware, and
+   `canApply` guards each writer so a rejected setting is an error, never a crash.
+2. **The extras (HEVC, GIF source) are encoded live only up to 1.6 Mpx** per frame (3 × 60 × 1.6 =
+   288 Mpx/s, inside the slowest chip's budget). Larger recordings encode only the MP4 live and
+   derive HEVC and GIF from it on save, as 1.5 did.
+3. **Backpressure is measured, not assumed.** Each frame, the engine counts how many of
+   ScreenCaptureKit's buffers are still held (`IOSurfaceIsInUse`): 1 with headroom, 6–8 when
+   saturated. Three strained frames within a second drop the extras; if the MP4 alone is still
+   strained a second later, capture goes to a steady 30 fps.
+
+Simulating a slower Mac by keeping part of the M4's media engine busy with other encodes:
+
+| Load from other encodes | 1280 × 720, three files | 2560 × 1440, MP4 only |
+|---|---|---|
+| none | 57 fps, extras kept | 57 fps |
+| ~255 Mpx/s (half the engine) | 57 fps, extras kept | 57 fps |
+| ~380 Mpx/s, 1680 × 940 | extras dropped, 57 fps | |
+| ~510 Mpx/s | extras dropped, steady 30 fps | steady 30 fps |
+| ~765 Mpx/s | | steady 30 fps |
+
+Before the backpressure signal, the ~510 Mpx/s case gave 46 fps with 50–68 missing frames in 6 s.
+No false positives without load. Deriving HEVC from a 5 s 2560 × 1440 MP4 takes 2.3 s; the GIF
+1.5 s. GIF encoding also caps its in-flight frames at ~256 MB, for 8 GB Macs.
+
 ## Tradeoffs accepted
 
 - We accept one extra step after every recording (the card) in exchange for never asking anything before recording, and for choosing the format after seeing the clip. Doing nothing still saves the file, so the extra step costs no action.

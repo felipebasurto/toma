@@ -61,11 +61,14 @@ If you press the shortcut while the thumbnail is on screen, Toma saves the recor
 | | What for | 10 s of editor and UI, 1280 × 720 | Saving takes |
 |---|---|---|---|
 | **MP4** | H.264, works everywhere | 0.81 MB | instant |
-| **HEVC** | Smaller, ideal on Apple devices and modern browsers | 0.64 MB | instant |
+| **HEVC** | Smaller, ideal on Apple devices and modern browsers | 0.64 MB | instant (large areas: ~0.5 s per second) |
 | **GIF** | Animation without a player, for READMEs, chats and docs | 3.5 MB (sharp) | ~0.4 s |
 
 Toma encodes while it records: the Mac's hardware encoders write the MP4 and the HEVC as the
-frames arrive, so when you stop they are already finished. One compression pass instead of two,
+frames arrive, so when you stop they are already finished. It adapts to your Mac: on large areas,
+or when the video engine falls behind (an older chip, a video call), it records only the MP4 live
+and makes the HEVC and GIF when you save, and if needed it records a steady 30 fps rather than a
+choppy 60. Areas larger than 4096 px are recorded at 4096, the most the H.264 hardware encoder takes. One compression pass instead of two,
 tuned for quality rather than a fixed size: text stays sharp, and a still screen barely weighs
 anything. Colours are kept exactly as they were on screen (sRGB), so the video looks the same in
 QuickTime, Chrome, Slack or a GIF.

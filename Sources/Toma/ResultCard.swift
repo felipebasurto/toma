@@ -482,6 +482,7 @@ private final class PreviewWindow: NSWindow, NSWindowDelegate {
         let pixel = clip.region.pixelSize
         let native = CGSize(width: CGFloat(pixel.width) / screen.backingScaleFactor,
                             height: CGFloat(pixel.height) / screen.backingScaleFactor)
+        let file = (width: clip.width, height: clip.height)
         let room = CGSize(width: screen.visibleFrame.width * 0.8, height: screen.visibleFrame.height * 0.8 - bar - 32)
         let fit = min(room.width / native.width, room.height / native.height,
                       max(1, 480 / max(native.width, native.height)))
@@ -492,7 +493,7 @@ private final class PreviewWindow: NSWindow, NSWindowDelegate {
                    styleMask: [.titled, .closable, .resizable], backing: .buffered, defer: false)
         title = tr("Screen Recording")
         let seconds = Int(clip.duration.rounded())
-        subtitle = String(format: "%d:%02d · %d × %d px", seconds / 60, seconds % 60, Int(pixel.width), Int(pixel.height))
+        subtitle = String(format: "%d:%02d · %d × %d px", seconds / 60, seconds % 60, file.width, file.height)
         isReleasedWhenClosed = false
         tabbingMode = .disallowed
         collectionBehavior = [.moveToActiveSpace, .fullScreenAuxiliary]

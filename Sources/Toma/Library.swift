@@ -249,7 +249,8 @@ nonisolated struct GIFPolicy: Sendable {
 /// track, because many players only play the first. With `copyVideo` the video is copied as is
 /// (a live MP4/HEVC that only needs its audio mixed: about disk speed). Without it, the video is
 /// re-encoded as `format` with the same quality-targeted hardware settings Recording uses live
-/// (only for HEVC on Macs without the hardware encoder, from the near-lossless source).
+/// (only for HEVC that wasn't encoded live: no hardware HEVC, a large region, or encoders that
+/// fell behind; from the near-lossless source, or from the MP4 when there was no room for it).
 private nonisolated enum Transcoder {
     static func run(_ source: URL, to url: URL, format: Format, copyVideo: Bool,
                     progress: @escaping @Sendable (Double) -> Void) async throws {
@@ -290,6 +291,11 @@ private nonisolated enum Transcoder {
             AVVideoCompressionPropertiesKey: compression,
         ]
         if !colors.isEmpty { videoSettings[AVVideoColorPropertiesKey] = colors }
+        // Settings an encoder rejects raise an Objective-C exception that would kill the app;
+        // a thrown error falls back to saving the MP4.
+        if !copyVideo, !writer.canApply(outputSettings: videoSettings, forMediaType: .video) {
+            throw TomaError.exportFailed(underlying: "\(format.fileExtension) \(Int(size.width))×\(Int(size.height)) unsupported")
+        }
         let videoIn = copyVideo
             ? AVAssetWriterInput(mediaType: .video, outputSettings: nil, sourceFormatHint: description)
             : AVAssetWriterInput(mediaType: .video, outputSettings: videoSettings)
@@ -475,9 +481,10 @@ private nonisolated enum GIFEncoder {
         }
 
         let writer = try GIF.Writer(url: url, width: width, height: height)
-        // Encodes in flight, oldest first; written in order. The window bounds memory.
+        // Encodes in flight, oldest first; written in order. The window bounds memory: twice the
+        // cores, but no more than ~256 MB of frames, so a large GIF stays light on an 8 GB Mac.
         var inFlight: [Task<Data, Never>] = []
-        let window = max(4, 2 * ProcessInfo.processInfo.activeProcessorCount)
+        let window = max(2, min(2 * ProcessInfo.processInfo.activeProcessorCount, 256_000_000 / (width * height * 4)))
         defer { for task in inFlight { task.cancel() } }
         func submit(_ delta: GIF.Delta, centiseconds cs: Int) async throws {
             inFlight.append(Task.detached(priority: .userInitiated) { GIF.encode(delta, centiseconds: cs) })

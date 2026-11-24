@@ -6,6 +6,21 @@ Todos los cambios relevantes se documentan aquí. El formato sigue
 
 ## [Unreleased]
 
+## [1.6.1] - 2026-11-24
+
+### Corregido
+
+- **Toma se cerraba al grabar una zona de más de 4096 píxeles** de ancho o de alto: a lo ancho
+  en un iMac de 24", un Studio Display o un Pro Display XDR. El codificador H.264 del Mac solo
+  llega a 4096; por encima, ahora el vídeo se graba escalado a 4096 y nunca sale del hardware.
+- **Vídeo fluido en cualquier Mac con Apple silicon.** La 1.6.0 codificaba tres archivos a la
+  vez y, en zonas grandes con mucho movimiento, el motor de vídeo del Mac se quedaba corto y se
+  perdían fotogramas. Ahora Toma mide si va con retraso mientras graba: deja de codificar el
+  HEVC y la fuente del GIF (se crean al guardar) y, si aun así no da abasto, graba a 30 fps
+  estables en lugar de 60 a saltos. Las zonas grandes graban solo el MP4 en directo desde el
+  principio.
+- Los GIF grandes usan menos memoria al crearse.
+
 ## [1.6.0] - 2026-11-24
 
 ### Añadido
@@ -122,7 +137,8 @@ Todos los cambios relevantes se documentan aquí. El formato sigue
 - Miniatura tras grabar con MP4 o GIF y arrastrar para compartir.
 - Grabación a resolución nativa (Retina) con ScreenCaptureKit, sin que Toma salga en el vídeo.
 
-[Unreleased]: https://github.com/felipebasurto/toma/compare/v1.6.0...HEAD
+[Unreleased]: https://github.com/felipebasurto/toma/compare/v1.6.1...HEAD
+[1.6.1]: https://github.com/felipebasurto/toma/compare/v1.6.0...v1.6.1
 [1.6.0]: https://github.com/felipebasurto/toma/compare/v1.5.0...v1.6.0
 [1.5.0]: https://github.com/felipebasurto/toma/compare/v1.4.0...v1.5.0
 [1.4.0]: https://github.com/felipebasurto/toma/compare/v1.3.0...v1.4.0
