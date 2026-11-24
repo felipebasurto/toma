@@ -3,6 +3,8 @@ import AppKit
 import AVFoundation
 import CoreImage
 import UniformTypeIdentifiers
+import Accelerate
+import Synchronization
 
 /// The things a user can get out of Toma.
 nonisolated enum Format: String, CaseIterable, Sendable {
@@ -49,9 +51,11 @@ nonisolated enum Format: String, CaseIterable, Sendable {
 /// The one module that knows the destination folder, the naming scheme, the remembered
 /// format, and every encoding policy. Callers say "save this clip as GIF"; nothing else.
 ///
-/// The master from Recording is a high-quality, high-bitrate MP4. Every deliverable is derived
-/// from it: MP4 and HEVC are re-encoded with tuned quality (2–4× lighter, text stays crisp),
-/// GIF goes through `GIF`. Library consumes the master exactly once, in `save`, `copy` or `discard`.
+/// Recording already wrote the MP4 and (on Macs with hardware HEVC) the HEVC at delivery quality,
+/// so saving those is a move. The only extra work is mixing Mac sound and microphone into one
+/// audio track (the video is copied as is), HEVC on Macs without the hardware encoder, and GIF,
+/// which `GIF` builds from the clip's near-lossless source. Library consumes the clip exactly
+/// once, in `save`, `copy` or `discard`.
 enum Library {
     /// The format the result card pre-selects. Written only by `save` (the last format the user
     /// actually saved), so there is no setting to manage: using GIF once makes GIF the default.
@@ -85,15 +89,15 @@ enum Library {
         return tr("Screen Recording %@", f.string(from: date))
     }
 
-    /// Starts encoding the clip in `format` in the background while the user is still looking at
-    /// the card, so the likely choice saves (nearly) instantly. Calling it again is a no-op.
+    /// Starts whatever work `format` still needs in the background while the user is still
+    /// looking at the card, so the likely choice saves (nearly) instantly. Usually that is nothing:
+    /// MP4 and HEVC were written during the recording. Calling it again is a no-op.
     static func prepare(_ clip: Clip, as format: Format) {
-        guard format != .gif, prepared[clip.master] == nil else { return }
-        try? FileManager.default.createDirectory(at: scratch, withIntermediateDirectories: true)
-        let target = scratch.appending(path: "\(UUID().uuidString).\(format.fileExtension)")
-        prepared[clip.master] = (format, Task.detached(priority: .userInitiated) {
-            try await Transcoder.run(clip.master, to: target, format: format, progress: { _ in })
-            return target
+        guard prepared[clip.master] == nil, needsWork(clip, format) else { return }
+        let relay = ProgressRelay()
+        let policy = Preferences.gifSize.policy
+        prepared[clip.master] = Prepared(format: format, relay: relay, task: Task.detached(priority: .userInitiated) {
+            try await produce(clip, as: format, policy: policy, progress: relay.report)
         })
     }
 
@@ -128,13 +132,10 @@ enum Library {
         board.writeObjects([url as NSURL])
     }
 
-    /// Drops the clip: master, and any background encode started by `prepare`. Idempotent.
+    /// Drops the clip: its files, and any background work started by `prepare`. Idempotent.
     static func discard(_ clip: Clip) {
-        if let (_, task) = prepared.removeValue(forKey: clip.master) {
-            task.cancel()
-            Task { if let url = try? await task.value { try? FileManager.default.removeItem(at: url) } }
-        }
-        try? FileManager.default.removeItem(at: clip.master)
+        discardPrepared(clip)
+        for url in clip.files { try? FileManager.default.removeItem(at: url) }
     }
 
     /// Launch housekeeping: masters and scratch files from a crashed run, day-old clipboard files.
@@ -156,39 +157,73 @@ enum Library {
 
     // MARK: private
 
-    private static var prepared: [URL: (Format, Task<URL, any Error>)] = [:]
+    private struct Prepared {
+        let format: Format
+        let relay: ProgressRelay
+        let task: Task<URL, any Error>
+    }
+
+    private static var prepared: [URL: Prepared] = [:]
 
     private static var clipboardFolder: URL {
         FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask)[0]
             .appending(path: "app.toma/Portapapeles", directoryHint: .isDirectory)
     }
 
-    /// A finished file in scratch, encoded as `format`, reusing a prepared encode when it matches.
+    /// A finished file in scratch as `format`, reusing prepared work when it matches. For a live
+    /// MP4 or HEVC with at most one audio track, that is the clip's own file.
     private static func encode(_ clip: Clip, as format: Format,
                                progress: @escaping @Sendable (Double) -> Void) async throws -> URL {
-        if let (preparedFormat, task) = prepared[clip.master] {
-            if preparedFormat == format {
+        if let job = prepared[clip.master] {
+            if job.format == format {
                 prepared[clip.master] = nil
-                if let url = try? await task.value { return url }
+                job.relay.forward(to: progress)
+                if let url = try? await job.task.value { return url }
             } else {
                 discardPrepared(clip)
             }
         }
+        return try await produce(clip, as: format, policy: Preferences.gifSize.policy, progress: progress)
+    }
+
+    /// Whether `format` takes more than moving a file that Recording already wrote.
+    private static func needsWork(_ clip: Clip, _ format: Format) -> Bool {
+        switch format {
+        case .mp4: clip.audioTracks > 1
+        case .hevc: clip.hevc == nil || clip.audioTracks > 1
+        case .gif: true
+        }
+    }
+
+    private nonisolated static func produce(_ clip: Clip, as format: Format, policy: GIFPolicy,
+                                            progress: @escaping @Sendable (Double) -> Void) async throws -> URL {
+        let live: URL? = switch format {
+        case .mp4: clip.master
+        case .hevc: clip.hevc
+        case .gif: nil
+        }
+        if let live, clip.audioTracks <= 1 { progress(1); return live }
+
         try? FileManager.default.createDirectory(at: scratch, withIntermediateDirectories: true)
         let target = scratch.appending(path: "\(UUID().uuidString).\(format.fileExtension)")
-        switch format {
-        case .gif:
-            try await GIFEncoder.encode(clip, policy: Preferences.gifSize.policy, to: target, progress: progress)
-        case .mp4, .hevc:
-            try await Transcoder.run(clip.master, to: target, format: format, progress: progress)
+        if let live {
+            // Mac sound and microphone are separate tracks; many players only play the first.
+            try await Transcoder.run(live, to: target, format: format, copyVideo: true, progress: progress)
+        } else if format == .gif {
+            try await GIFEncoder.encode(clip, policy: policy, to: target, progress: progress)
+        } else {
+            try await Transcoder.run(clip.source, to: target, format: format, copyVideo: false, progress: progress)
         }
         return target
     }
 
     private static func discardPrepared(_ clip: Clip) {
-        guard let (_, task) = prepared.removeValue(forKey: clip.master) else { return }
-        task.cancel()
-        Task { if let url = try? await task.value { try? FileManager.default.removeItem(at: url) } }
+        guard let job = prepared.removeValue(forKey: clip.master) else { return }
+        job.task.cancel()
+        let owned = Set(clip.files)
+        Task {
+            if let url = try? await job.task.value, !owned.contains(url) { try? FileManager.default.removeItem(at: url) }
+        }
     }
 
     private static func uniqueURL(in folder: URL, base: String, ext: String) -> URL {
@@ -210,12 +245,13 @@ nonisolated struct GIFPolicy: Sendable {
     var maxLongEdge: Int
 }
 
-/// Re-encodes the master into a lighter video. Quality-targeted (not bitrate-targeted) hardware
-/// encoding: static screens cost almost nothing, text stays sharp. Measured on a 4 s scrolling
-/// test at 1120×720: master 2.5 MB → MP4 ≈ 1.1 MB, HEVC ≈ 0.7 MB. All audio tracks (Mac sound,
-/// microphone) are mixed into one AAC track, because many players only play the first track.
+/// Rewrites a recording file. All audio tracks (Mac sound, microphone) are mixed into one AAC
+/// track, because many players only play the first. With `copyVideo` the video is copied as is
+/// (a live MP4/HEVC that only needs its audio mixed: about disk speed). Without it, the video is
+/// re-encoded as `format` with the same quality-targeted hardware settings Recording uses live
+/// (only for HEVC on Macs without the hardware encoder, from the near-lossless source).
 private nonisolated enum Transcoder {
-    static func run(_ source: URL, to url: URL, format: Format,
+    static func run(_ source: URL, to url: URL, format: Format, copyVideo: Bool,
                     progress: @escaping @Sendable (Double) -> Void) async throws {
         let asset = AVURLAsset(url: source)
         guard let video = try await asset.loadTracks(withMediaType: .video).first else {
@@ -224,10 +260,11 @@ private nonisolated enum Transcoder {
         let audio = try await asset.loadTracks(withMediaType: .audio)
         let duration = try await asset.load(.duration).seconds
         let size = try await video.load(.naturalSize)
-        let colors = try await video.load(.formatDescriptions).first.map(colorProperties) ?? [:]
+        let description = try await video.load(.formatDescriptions).first
+        let colors = description.map(colorProperties) ?? [:]
 
         let reader = try AVAssetReader(asset: asset)
-        let videoOut = AVAssetReaderTrackOutput(track: video, outputSettings: [
+        let videoOut = AVAssetReaderTrackOutput(track: video, outputSettings: copyVideo ? nil : [
             kCVPixelBufferPixelFormatTypeKey as String: kCVPixelFormatType_420YpCbCr8BiPlanarVideoRange,
         ])
         videoOut.alwaysCopiesSampleData = false
@@ -241,7 +278,7 @@ private nonisolated enum Transcoder {
 
         let writer = try AVAssetWriter(outputURL: url, fileType: format == .hevc ? .mov : .mp4)
         var compression: [String: Any] = [
-            AVVideoQualityKey: format == .hevc ? 0.55 : 0.6,
+            AVVideoQualityKey: format == .hevc ? 0.6 : 0.65,
             AVVideoExpectedSourceFrameRateKey: 60,
             AVVideoMaxKeyFrameIntervalDurationKey: 2,
         ]
@@ -253,7 +290,9 @@ private nonisolated enum Transcoder {
             AVVideoCompressionPropertiesKey: compression,
         ]
         if !colors.isEmpty { videoSettings[AVVideoColorPropertiesKey] = colors }
-        let videoIn = AVAssetWriterInput(mediaType: .video, outputSettings: videoSettings)
+        let videoIn = copyVideo
+            ? AVAssetWriterInput(mediaType: .video, outputSettings: nil, sourceFormatHint: description)
+            : AVAssetWriterInput(mediaType: .video, outputSettings: videoSettings)
         videoIn.expectsMediaDataInRealTime = false
         writer.add(videoIn)
         var audioIn: AVAssetWriterInput?
@@ -348,21 +387,40 @@ private nonisolated enum Transcoder {
 
 private nonisolated final class Finished { var done = false }
 
+/// Progress of background work that a save may adopt halfway: reports go nowhere until a save
+/// takes the job over, then to that save's ring, starting with the latest value.
+private nonisolated final class ProgressRelay: Sendable {
+    private let state = Mutex<(latest: Double, target: (@Sendable (Double) -> Void)?)>((0, nil))
+
+    func report(_ value: Double) {
+        let target = state.withLock { s in s.latest = value; return s.target }
+        target?(value)
+    }
+
+    func forward(to target: @escaping @Sendable (Double) -> Void) {
+        let latest = state.withLock { s in s.target = target; return s.latest }
+        target(latest)
+    }
+}
+
 private nonisolated struct UncheckedBox<T>: @unchecked Sendable {
     let value: T
     init(_ value: T) { self.value = value }
 }
 
-/// Reads the master sequentially and streams a looping GIF through `GIF`.
+/// Reads the clip's near-lossless source sequentially and streams a looping GIF through `GIF`.
 ///
-/// SCK writes frames only when the screen changes, so the master has a variable frame rate.
-/// The encoder samples it on a fixed 1/fps clock (latest frame at or before each tick); runs of
-/// identical samples become one frame with a longer delay, so static screen time costs nothing.
-/// Delays are rounded cumulatively, so any fps keeps exact total timing despite 1/100 s units.
+/// The source has a variable frame rate (frames only when the screen changed). The encoder
+/// samples it on a fixed 1/fps clock (latest frame at or before each tick); runs of identical
+/// samples become one frame with a longer delay, so static screen time costs nothing. Delays are
+/// rounded cumulatively, so any fps keeps exact total timing despite 1/100 s units.
+///
+/// Two stages overlap: the sequential one (decode, pixels, `GIF.Differ`) and the per-frame
+/// encodes, which run in parallel in a sliding window and are written in order as they finish.
 private nonisolated enum GIFEncoder {
     static func encode(_ clip: Clip, policy: GIFPolicy, to url: URL,
                        progress: @Sendable (Double) -> Void) async throws {
-        let asset = AVURLAsset(url: clip.master)
+        let asset = AVURLAsset(url: clip.source)
         guard let track = try await asset.loadTracks(withMediaType: .video).first else {
             throw TomaError.exportFailed(underlying: "no video track")
         }
@@ -381,16 +439,31 @@ private nonisolated enum GIFEncoder {
 
         let sRGB = CGColorSpace(name: CGColorSpace.sRGB)!
         let ci = CIContext(options: [.workingColorSpace: sRGB, .outputColorSpace: sRGB, .cacheIntermediates: false])
+        /// RGBA pixels at GIF size. At native size a vImage channel swap of the decoded BGRA
+        /// frame; smaller, a Lanczos downscale.
         func render(_ buffer: CVPixelBuffer) -> GIF.Frame {
-            var image = CIImage(cvPixelBuffer: buffer)
-            if fit < 1 {
-                image = image.clampedToExtent()
-                    .applyingFilter("CILanczosScaleTransform", parameters: [kCIInputScaleKey: fit, kCIInputAspectRatioKey: 1])
-            }
             var pixels = [UInt32](repeating: 0, count: width * height)
-            pixels.withUnsafeMutableBytes {
-                ci.render(image, toBitmap: $0.baseAddress!, rowBytes: width * 4,
-                          bounds: CGRect(x: 0, y: 0, width: width, height: height), format: .RGBA8, colorSpace: sRGB)
+            if fit == 1, CVPixelBufferGetPixelFormatType(buffer) == kCVPixelFormatType_32BGRA,
+               CVPixelBufferGetWidth(buffer) == width, CVPixelBufferGetHeight(buffer) == height {
+                CVPixelBufferLockBaseAddress(buffer, .readOnly)
+                defer { CVPixelBufferUnlockBaseAddress(buffer, .readOnly) }
+                pixels.withUnsafeMutableBytes { out in
+                    var src = vImage_Buffer(data: CVPixelBufferGetBaseAddress(buffer), height: vImagePixelCount(height),
+                                            width: vImagePixelCount(width), rowBytes: CVPixelBufferGetBytesPerRow(buffer))
+                    var dst = vImage_Buffer(data: out.baseAddress, height: vImagePixelCount(height),
+                                            width: vImagePixelCount(width), rowBytes: width * 4)
+                    _ = vImagePermuteChannels_ARGB8888(&src, &dst, [2, 1, 0, 3], vImage_Flags(kvImageNoFlags))
+                }
+            } else {
+                var image = CIImage(cvPixelBuffer: buffer)
+                if fit < 1 {
+                    image = image.clampedToExtent()
+                        .applyingFilter("CILanczosScaleTransform", parameters: [kCIInputScaleKey: fit, kCIInputAspectRatioKey: 1])
+                }
+                pixels.withUnsafeMutableBytes {
+                    ci.render(image, toBitmap: $0.baseAddress!, rowBytes: width * 4,
+                              bounds: CGRect(x: 0, y: 0, width: width, height: height), format: .RGBA8, colorSpace: sRGB)
+                }
             }
             return GIF.Frame(pixels: pixels, width: width, height: height)
         }
@@ -402,27 +475,19 @@ private nonisolated enum GIFEncoder {
         }
 
         let writer = try GIF.Writer(url: url, width: width, height: height)
-        // Deltas are found in order, then encoded in parallel batches.
-        var jobs: [(delta: GIF.Delta, cs: Int)] = []
-        func flushJobs() async throws {
-            let batch = jobs
-            jobs = []
-            let encoded = await withTaskGroup(of: (Int, Data).self) { group in
-                for (i, job) in batch.enumerated() {
-                    group.addTask { (i, GIF.encode(job.delta, centiseconds: job.cs)) }
-                }
-                var out = [Data](repeating: Data(), count: batch.count)
-                for await (i, data) in group { out[i] = data }
-                return out
-            }
-            for data in encoded { try writer.append(data) }
+        // Encodes in flight, oldest first; written in order. The window bounds memory.
+        var inFlight: [Task<Data, Never>] = []
+        let window = max(4, 2 * ProcessInfo.processInfo.activeProcessorCount)
+        defer { for task in inFlight { task.cancel() } }
+        func submit(_ delta: GIF.Delta, centiseconds cs: Int) async throws {
+            inFlight.append(Task.detached(priority: .userInitiated) { GIF.encode(delta, centiseconds: cs) })
+            while inFlight.count >= window { try writer.append(await inFlight.removeFirst().value) }
         }
 
         var differ = GIF.Differ()
         var pending: (delta: GIF.Delta, start: Int)?
         var current: CVPixelBuffer?, drawn: CVPixelBuffer?
         var next = output.copyNextSampleBuffer()
-        let batchSize = max(2, ProcessInfo.processInfo.activeProcessorCount)
 
         for tick in 0..<ticks {
             try Task.checkCancellation()
@@ -436,15 +501,12 @@ private nonisolated enum GIFEncoder {
             drawn = buffer
 
             guard let delta = differ.delta(render(buffer)) else { continue }   // nothing visible changed
-            if let p = pending { jobs.append((p.delta, centiseconds(p.start, tick))) }
+            if let p = pending { try await submit(p.delta, centiseconds: centiseconds(p.start, tick)) }
             pending = (delta, tick)
-            if jobs.count >= batchSize {
-                try await flushJobs()
-                progress(Double(tick) / Double(ticks))
-            }
+            if tick % 10 == 0 { progress(Double(tick) / Double(ticks)) }
         }
-        if let p = pending { jobs.append((p.delta, max(2, centiseconds(p.start, ticks)))) }
-        try await flushJobs()
+        if let p = pending { try await submit(p.delta, centiseconds: max(2, centiseconds(p.start, ticks))) }
+        while !inFlight.isEmpty { try writer.append(await inFlight.removeFirst().value) }
         try writer.finish()
         progress(1)
     }

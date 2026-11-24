@@ -57,18 +57,21 @@ If you press the shortcut while the thumbnail is on screen, Toma saves the recor
 
 ## Formats
 
-| | What for | 4 s of scrolling text, 1120 × 720 |
-|---|---|---|
-| **MP4** | H.264, works everywhere | 0.46 MB |
-| **HEVC** | Half the size, ideal on Apple devices and modern browsers | 0.25 MB |
-| **GIF** | Animation without a player, for READMEs, chats and docs | Sharp or light |
+| | What for | 10 s of editor and UI, 1280 × 720 | Saving takes |
+|---|---|---|---|
+| **MP4** | H.264, works everywhere | 0.81 MB | instant |
+| **HEVC** | Smaller, ideal on Apple devices and modern browsers | 0.64 MB | instant |
+| **GIF** | Animation without a player, for READMEs, chats and docs | 3.5 MB (sharp) | ~0.4 s |
 
-Toma first records a high-quality original and re-encodes it for quality, not for a fixed size.
-Text stays sharp, and a still screen barely weighs anything. The format you usually pick starts
-encoding while you look at the thumbnail, so saving it is immediate.
+Toma encodes while it records: the Mac's hardware encoders write the MP4 and the HEVC as the
+frames arrive, so when you stop they are already finished. One compression pass instead of two,
+tuned for quality rather than a fixed size: text stays sharp, and a still screen barely weighs
+anything. Colours are kept exactly as they were on screen (sRGB), so the video looks the same in
+QuickTime, Chrome, Slack or a GIF.
 
 The GIF uses a custom encoder built for screens. Each frame only stores what changed, and interface
-colours stay exact. Gradients are smoothed out without banding.
+colours stay exact. Gradients are smoothed out without banding. If GIF is what you usually pick,
+it starts encoding while you look at the thumbnail.
 
 ## Options
 
@@ -111,8 +114,8 @@ About 2,500 lines of Swift in a single module, organised by what each part knows
 |---|---|
 | `Toma.swift` | The state (a state machine with one verb: `toggle()`) and the history of a recording. |
 | `Region.swift` | Coordinates: a region can only exist if it can be recorded exactly as drawn. |
-| `Recording.swift` | ScreenCaptureKit and permissions. |
-| `Library.swift` | Folders, names, formats and re-encoding. |
+| `Recording.swift` | ScreenCaptureKit, permissions, and encoding while recording. |
+| `Library.swift` | Folders, names, formats and saving. |
 | `GIF.swift` | The GIF encoder. |
 | `Overlay.swift`, `ResultCard.swift`, `StatusItem.swift` | The interface. |
 

@@ -6,15 +6,28 @@ Todos los cambios relevantes se documentan aquí. El formato sigue
 
 ## [Unreleased]
 
-## [1.5.1] - 2026-11-24
+## [1.6.0] - 2026-11-24
+
+### Cambiado
+
+- **Toma codifica mientras graba.** Los codificadores de hardware del Mac escriben el MP4 y el
+  HEVC a la vez que llegan los fotogramas, así que al parar ya están terminados: guardar en MP4
+  o HEVC pasa de ~1 s por cada 7 s de vídeo a ser instantáneo. Una sola pasada de compresión en
+  lugar de dos: más nitidez con un tamaño parecido (PSNR +1,3 a +1,7 dB, SSIM 0,993 → 0,997;
+  el MP4 pesa hasta un 8 % más en pantallas tranquilas).
+- **GIF de 4 a 5 veces más rápido y hasta un 33 % más ligero.** Se crea desde una fuente casi
+  sin pérdida grabada en paralelo, compara fotogramas con SIMD en todos los núcleos (14× más
+  rápido, mismo resultado exacto) y, si sueles elegir GIF, empieza mientras miras la miniatura.
 
 ### Corregido
 
+- **Colores exactos.** Los vídeos y los GIF salían con los tonos medios un ~9 % más oscuros que
+  la pantalla en Chrome, Slack, Windows y en todos los GIF: la grabación convertía los colores a
+  la curva de vídeo BT.709. Ahora se conservan tal cual (sRGB) y se ven igual en todas partes.
 - **Las grabaciones ya no se pierden al parar.** Desde la 1.3.0, Toma quitaba la salida de
   grabación antes de detener la captura. En macOS 26.6 eso interrumpe la captura y el vídeo a
-  menudo no se terminaba de escribir: al parar salía «La grabación se interrumpió». Ahora se
-  detiene la captura primero (como en la 1.2.0) y, si el aviso de fin llega antes de que el
-  archivo esté listo, Toma espera a que lo esté.
+  menudo no se terminaba de escribir: al parar salía «La grabación se interrumpió». Ahora Toma
+  escribe y cierra sus propios archivos al parar, sin depender de ese aviso del sistema.
 
 ## [1.5.0] - 2026-11-24
 
@@ -102,8 +115,8 @@ Todos los cambios relevantes se documentan aquí. El formato sigue
 - Miniatura tras grabar con MP4 o GIF y arrastrar para compartir.
 - Grabación a resolución nativa (Retina) con ScreenCaptureKit, sin que Toma salga en el vídeo.
 
-[Unreleased]: https://github.com/felipebasurto/toma/compare/v1.5.1...HEAD
-[1.5.1]: https://github.com/felipebasurto/toma/compare/v1.5.0...v1.5.1
+[Unreleased]: https://github.com/felipebasurto/toma/compare/v1.6.0...HEAD
+[1.6.0]: https://github.com/felipebasurto/toma/compare/v1.5.0...v1.6.0
 [1.5.0]: https://github.com/felipebasurto/toma/compare/v1.4.0...v1.5.0
 [1.4.0]: https://github.com/felipebasurto/toma/compare/v1.3.0...v1.4.0
 [1.3.0]: https://github.com/felipebasurto/toma/compare/v1.2.0...v1.3.0

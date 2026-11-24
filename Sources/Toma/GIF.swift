@@ -31,84 +31,167 @@ nonisolated enum GIF {
     /// `tolerance` (a real change), or when it moved at all and sits within `reach` pixels of a
     /// real change — that catches the soft anti-aliased edges of text and shapes, which would
     /// otherwise linger as faint ghosts, while isolated compression noise stays skipped.
+    ///
+    /// This is the only sequential stage of GIF encoding, so it is built for speed: eight pixels
+    /// per SIMD step, rows split across cores, buffers reused, the reference updated in place.
     struct Differ {
         /// Max per-channel difference treated as noise when nothing real changed nearby.
         var tolerance: UInt8 = 3
         var reach = 1
         /// Smallest movement redrawn next to a real change (1 would redraw pure noise).
         var nearMin: UInt8 = 2
-        private var reference: [UInt32]?
+        private var reference: [UInt32] = []
+        /// Per pixel: max channel difference to the reference (at least 1 when they differ).
+        private var distance: [UInt8] = []
+        /// Per pixel: a real change within `reach` on the same row.
+        private var rowNear: [UInt8] = []
 
         /// nil when nothing visibly changed (the caller extends the previous frame instead).
         mutating func delta(_ frame: Frame) -> Delta? {
             let w = frame.width, h = frame.height
-            guard var ref = reference else {
+            guard reference.count == w * h else {
                 reference = frame.pixels
+                distance = [UInt8](repeating: 0, count: w * h)
+                rowNear = [UInt8](repeating: 0, count: w * h)
                 return Delta(frame: frame, x: 0, y: 0, width: w, height: h, changed: nil)
             }
+            let tol = tolerance, reach = self.reach, nearMin = self.nearMin
+            let bands = min(h, 4 * ProcessInfo.processInfo.activeProcessorCount)
 
-            // 1. Per-pixel distance (max channel), and the box around real changes.
-            var distance = [UInt8](repeating: 0, count: w * h)
-            var minX = w, minY = h, maxX = -1, maxY = -1
-            let tol = tolerance
-            frame.pixels.withUnsafeBufferPointer { cur in
-                ref.withUnsafeBufferPointer { ref in
-                    distance.withUnsafeMutableBufferPointer { distance in
-                        for y in 0..<h {
-                            let row = y * w
-                            for x in 0..<w {
-                                let a = cur[row + x], b = ref[row + x]
-                                guard a != b else { continue }
-                                let dr = UInt8(abs(Int16(a & 0xFF) - Int16(b & 0xFF)))
-                                let dg = UInt8(abs(Int16((a >> 8) & 0xFF) - Int16((b >> 8) & 0xFF)))
-                                let db = UInt8(abs(Int16((a >> 16) & 0xFF) - Int16((b >> 16) & 0xFF)))
-                                let d = max(dr, dg, db, 1)
-                                distance[row + x] = d
-                                if d > tol {
-                                    if x < minX { minX = x }
-                                    if x > maxX { maxX = x }
-                                    if y < minY { minY = y }
-                                    maxY = y
+            return frame.pixels.withUnsafeBufferPointer { cur in
+                reference.withUnsafeMutableBufferPointer { ref in
+                    distance.withUnsafeMutableBufferPointer { dist in
+                        rowNear.withUnsafeMutableBufferPointer { near in
+                            let p = Pointers(cur: cur.baseAddress!, ref: ref.baseAddress!, dist: dist.baseAddress!, near: near.baseAddress!)
+
+                            // 1. Distances and, per band, the box around real changes.
+                            let boxes = Boxes(UnsafeMutableBufferPointer<Box>.allocate(capacity: bands))
+                            defer { boxes.buffer.deallocate() }
+                            DispatchQueue.concurrentPerform(iterations: bands) { band in
+                                var box = Box(minX: w, minY: h, maxX: -1, maxY: -1)
+                                for y in (band * h / bands)..<((band + 1) * h / bands) {
+                                    if let (lo, hi) = Self.distances(row: y, width: w, tolerance: tol, p) {
+                                        box.minX = min(box.minX, lo); box.maxX = max(box.maxX, hi)
+                                        box.minY = min(box.minY, y); box.maxY = y
+                                    }
+                                }
+                                (boxes.buffer.baseAddress! + band).initialize(to: box)
+                            }
+                            var all = Box(minX: w, minY: h, maxX: -1, maxY: -1)
+                            for box in boxes.buffer {
+                                all.minX = min(all.minX, box.minX); all.maxX = max(all.maxX, box.maxX)
+                                all.minY = min(all.minY, box.minY); all.maxY = max(all.maxY, box.maxY)
+                            }
+                            guard all.maxX >= 0 else { return nil }
+                            let minX = max(0, all.minX - reach), maxX = min(w - 1, all.maxX + reach)
+                            let minY = max(0, all.minY - reach), maxY = min(h - 1, all.maxY + reach)
+                            let bw = maxX - minX + 1, bh = maxY - minY + 1
+
+                            // 2. Real changes dilated along each row.
+                            DispatchQueue.concurrentPerform(iterations: min(bh, bands)) { band in
+                                for y in (minY + band * bh / min(bh, bands))..<(minY + (band + 1) * bh / min(bh, bands)) {
+                                    let d = p.dist + y * w, n = p.near + y * w
+                                    for x in minX...maxX { n[x] = 0 }
+                                    for x in minX...maxX where d[x] > tol {
+                                        for k in max(minX, x - reach)...min(maxX, x + reach) { n[k] = 1 }
+                                    }
                                 }
                             }
+
+                            // 3. Draw what changed for real, plus any movement next to it (the row
+                            //    dilation, dilated along columns); update the reference.
+                            var changed = [Bool](repeating: false, count: bw * bh)
+                            changed.withUnsafeMutableBufferPointer { out in
+                                let o = Out(changed: out.baseAddress!)
+                                DispatchQueue.concurrentPerform(iterations: min(bh, bands)) { band in
+                                    for y in (minY + band * bh / min(bh, bands))..<(minY + (band + 1) * bh / min(bh, bands)) {
+                                        let d = p.dist + y * w
+                                        let y0 = max(minY, y - reach), y1 = min(maxY, y + reach)
+                                        for x in minX...maxX {
+                                            let dx = d[x]
+                                            guard dx >= nearMin else { continue }
+                                            var hit = dx > tol
+                                            if !hit {
+                                                var k = y0
+                                                while k <= y1 { if p.near[k * w + x] != 0 { hit = true; break }; k += 1 }
+                                            }
+                                            if hit {
+                                                o.changed[(y - minY) * bw + (x - minX)] = true
+                                                p.ref[y * w + x] = p.cur[y * w + x]
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                            return Delta(frame: frame, x: minX, y: minY, width: bw, height: bh, changed: changed)
                         }
                     }
                 }
             }
-            guard maxX >= 0 else { return nil }
-            minX = max(0, minX - reach); maxX = min(w - 1, maxX + reach)
-            minY = max(0, minY - reach); maxY = min(h - 1, maxY + reach)
-            let bw = maxX - minX + 1, bh = maxY - minY + 1
+        }
 
-            // 2. Real changes, dilated by `reach` (separable box: rows, then columns).
-            var near = [Bool](repeating: false, count: bw * bh)
-            var rowPass = [Bool](repeating: false, count: bw * bh)
-            for y in 0..<bh {
-                let src = (minY + y) * w + minX
-                for x in 0..<bw where distance[src + x] > tol {
-                    for k in max(0, x - reach)...min(bw - 1, x + reach) { rowPass[y * bw + k] = true }
-                }
-            }
-            for x in 0..<bw {
-                for y in 0..<bh where rowPass[y * bw + x] {
-                    for k in max(0, y - reach)...min(bh - 1, y + reach) { near[k * bw + x] = true }
-                }
-            }
+        private struct Box { var minX: Int, minY: Int, maxX: Int, maxY: Int }
+        private struct Boxes: @unchecked Sendable {
+            let buffer: UnsafeMutableBufferPointer<Box>
+            init(_ buffer: UnsafeMutableBufferPointer<Box>) { self.buffer = buffer }
+        }
 
-            // 3. Draw what changed for real, plus any movement next to it; update the reference.
-            var changed = [Bool](repeating: false, count: bw * bh)
-            for y in 0..<bh {
-                let src = (minY + y) * w + minX
-                for x in 0..<bw {
-                    let d = distance[src + x]
-                    if d > tol || (d >= nearMin && near[y * bw + x]) {
-                        changed[y * bw + x] = true
-                        ref[src + x] = frame.pixels[src + x]
+        /// Raw pointers handed to the parallel passes; each pass writes disjoint rows.
+        private struct Pointers: @unchecked Sendable {
+            let cur: UnsafePointer<UInt32>
+            let ref: UnsafeMutablePointer<UInt32>
+            let dist: UnsafeMutablePointer<UInt8>
+            let near: UnsafeMutablePointer<UInt8>
+        }
+
+        private struct Out: @unchecked Sendable { let changed: UnsafeMutablePointer<Bool> }
+
+        /// Fills one row of `dist`; returns the first and last x of a real change, if any.
+        private static func distances(row y: Int, width w: Int, tolerance tol: UInt8, _ p: Pointers) -> (Int, Int)? {
+            let a = p.cur + y * w, b = UnsafePointer(p.ref + y * w), d = p.dist + y * w
+            var lo = -1, hi = -1
+            var x = 0
+            let byte = SIMD8<UInt32>(repeating: 0xFF), one = SIMD8<UInt32>(repeating: 1)
+            let limit = SIMD8<UInt32>(repeating: UInt32(tol))
+            while x + 8 <= w {
+                let va = UnsafeRawPointer(a + x).loadUnaligned(as: SIMD8<UInt32>.self)
+                let vb = UnsafeRawPointer(b + x).loadUnaligned(as: SIMD8<UInt32>.self)
+                let differs = va .!= vb
+                if !any(differs) {
+                    UnsafeMutableRawPointer(d + x).storeBytes(of: SIMD8<UInt8>(repeating: 0), as: SIMD8<UInt8>.self)
+                    x += 8
+                    continue
+                }
+                func channel(_ shift: UInt32) -> SIMD8<UInt32> {
+                    let ca = (va &>> shift) & byte, cb = (vb &>> shift) & byte
+                    return pointwiseMax(ca, cb) &- pointwiseMin(ca, cb)
+                }
+                var m = pointwiseMax(pointwiseMax(channel(0), channel(8)), channel(16))
+                m.replace(with: pointwiseMax(m, one), where: differs)
+                UnsafeMutableRawPointer(d + x).storeBytes(of: SIMD8<UInt8>(truncatingIfNeeded: m), as: SIMD8<UInt8>.self)
+                let real = m .> limit
+                if any(real) {
+                    for i in 0..<8 where real[i] {
+                        if lo < 0 { lo = x + i }
+                        hi = x + i
                     }
                 }
+                x += 8
             }
-            reference = ref
-            return Delta(frame: frame, x: minX, y: minY, width: bw, height: bh, changed: changed)
+            while x < w {
+                let ca = a[x], cb = b[x]
+                var dx: UInt8 = 0
+                if ca != cb {
+                    let dr = UInt8(abs(Int16(ca & 0xFF) - Int16(cb & 0xFF)))
+                    let dg = UInt8(abs(Int16((ca >> 8) & 0xFF) - Int16((cb >> 8) & 0xFF)))
+                    let db = UInt8(abs(Int16((ca >> 16) & 0xFF) - Int16((cb >> 16) & 0xFF)))
+                    dx = max(dr, dg, db, 1)
+                    if dx > tol { if lo < 0 { lo = x }; hi = x }
+                }
+                d[x] = dx
+                x += 1
+            }
+            return lo >= 0 ? (lo, hi) : nil
         }
     }
 

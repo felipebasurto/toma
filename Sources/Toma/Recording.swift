@@ -1,15 +1,17 @@
 import AppKit
 @preconcurrency import ScreenCaptureKit
 import AVFoundation
+import VideoToolbox
 import Synchronization
 
 /// Everything Toma knows about ScreenCaptureKit and TCC lives here and nowhere else.
-/// Public surface: `ensureAccess()`, `start(_:)`, `stop()`, `clip`. Callers never see
-/// SCStream, SCContentFilter, configurations, delegates, or the temp file's location policy.
+/// Public surface: `ensureAccess()`, `snapshot(_:)`, `start(_:)`, `stop()`, `clip`. Callers never
+/// see SCStream, SCContentFilter, configurations, writers, or the temp files' location policy.
 ///
-/// Records straight to an MP4 "master" with SCRecordingOutput (H.264, native pixels, up to
-/// 60 fps, sRGB, cursor visible, sound per Preferences.audio). The master is the single source every export
-/// derives from; nothing else is captured or buffered.
+/// Encodes while it records: every captured frame (native pixels, up to 60 fps, sRGB, cursor
+/// visible, sound per Preferences.audio) goes straight into hardware encoders that write the
+/// deliverables themselves, so saving an MP4 or HEVC is a move, not a re-encode. One generation
+/// of compression instead of two, and colours tagged as the sRGB they are. See `Clip`.
 final class Recording {
     /// Pre-flight before the overlay ever appears, so the user never drags a region only to
     /// be told it can't be recorded. Returns true only when capture will actually work right now.
@@ -58,8 +60,9 @@ final class Recording {
         return SCContentFilter(display: display, excludingApplications: me, exceptingWindows: [])
     }
 
-    /// Starts capturing `region`. Returns once the file is being written, so the
-    /// menu-bar timer starts at the real start of the file.
+
+    /// Starts capturing `region`. Returns once the first frame is in the files, so the menu-bar
+    /// timer starts at the real start of the recording.
     ///
     /// Toma's own app is excluded from the filter — this, not window sharingType, is what keeps
     /// the veil, frame and card out of the video.
@@ -85,117 +88,113 @@ final class Recording {
         config.captureMicrophone = audio == .systemAndMicrophone
         config.sampleRate = 48_000
         config.channelCount = 2
+        // sRGB BGRA in, sRGB-tagged video out: the encoder only changes RGB to YCbCr, never the
+        // tone curve, so every player and every GIF shows the pixels that were on screen.
         config.colorSpaceName = CGColorSpace.sRGB
         config.pixelFormat = kCVPixelFormatType_32BGRA
-        config.queueDepth = 6
+        config.queueDepth = 8
 
-        let master = Library.scratch.appending(path: "\(UUID().uuidString).mp4")
         try? FileManager.default.createDirectory(at: Library.scratch, withIntermediateDirectories: true)
-
-        let sink = RecordingSink()
-        let output = SCRecordingOutputConfiguration()
-        output.outputURL = master
-        output.videoCodecType = .h264
-        output.outputFileType = .mp4
-
-        let stream = SCStream(filter: filter, configuration: config, delegate: sink)
-        let recordingOutput = SCRecordingOutput(configuration: output, delegate: sink)
+        let engine: Engine
         do {
-            try stream.addRecordingOutput(recordingOutput)
+            engine = try Engine(region: region, audio: audio)
+        } catch {
+            throw .streamFailed(underlying: "\(error)")
+        }
+        let stream = SCStream(filter: filter, configuration: config, delegate: engine)
+        do {
+            try stream.addStreamOutput(engine, type: .screen, sampleHandlerQueue: engine.queue)
+            if audio != .none { try stream.addStreamOutput(engine, type: .audio, sampleHandlerQueue: engine.queue) }
+            if audio == .systemAndMicrophone { try stream.addStreamOutput(engine, type: .microphone, sampleHandlerQueue: engine.queue) }
             try await stream.startCapture()
         } catch {
+            engine.abandon()
             throw .streamFailed(underlying: error.localizedDescription)
         }
-        if case .failed(let reason) = await sink.started.value {
+        // ScreenCaptureKit sends the first frame right away, even for a still screen.
+        let first = Task { await engine.started.value }
+        let timeout = Task { try? await Task.sleep(for: .seconds(2)); engine.started.resolve(.ok) }
+        let outcome = await first.value
+        timeout.cancel()
+        if case .failed(let reason) = outcome {
             try? await stream.stopCapture()
+            engine.abandon()
             throw .streamFailed(underlying: reason)
         }
-        return Recording(stream: stream, output: recordingOutput, sink: sink, master: master, region: region)
+        return Recording(stream: stream, engine: engine)
     }
 
     /// Requests the end of the recording. Idempotent and non-blocking: the first call stops the
     /// stream, later calls do nothing. The result arrives through `clip`.
     ///
-    /// Stopping the stream finalizes the file; macOS 26 then calls
-    /// `recordingOutputDidFinishRecording` within a few milliseconds. Sequoia 15.3 often does not,
-    /// so the stop settles the recording itself once `stopCapture` returns; a second settle is a
-    /// no-op. If neither happens within a few seconds, the recording is closed with whatever
-    /// reached the disk, so the menu bar can never stay stuck on the timer.
-    ///
-    /// Never remove the recording output before stopping: on macOS 26.6 that interrupts the
-    /// stream (SCStreamError -3805, then RPRecordingError -5814) and the MP4 is often never
-    /// finalized. Toma 1.3.0–1.5.0 did that and lost recordings.
+    /// The files are closed by Toma's own writers once the stream has stopped, so there is no
+    /// system callback to wait for (SCRecordingOutput's finish callback was unreliable: skipped
+    /// on Sequoia 15.3, and removing it early broke the file on macOS 26.6). The video ends at the
+    /// moment of the stop, so a still screen at the end keeps its length.
     func stop() {
         guard !stopRequested else { return }
         stopRequested = true
-        let stream = self.stream, sink = self.sink
+        let stream = self.stream, engine = self.engine
+        let end = CMClockGetTime(CMClockGetHostTimeClock())
         Task {
             try? await stream.stopCapture()
-            sink.streamEnded()
+            engine.finish(at: end)
         }
         Task {
-            try? await Task.sleep(for: .seconds(5))
-            sink.streamEnded()          // no-op when the recording already finished
+            try? await Task.sleep(for: .seconds(3))
+            engine.finish(at: end)          // no-op when the stream already stopped
         }
     }
 
-    /// The finished master, available once the file is finalized — after `stop()`, or after the
-    /// system ended the stream (display unplugged, user hit the system "stop sharing" control).
-    /// Throws only if nothing playable was written. Awaiting it twice returns the same Clip.
+    /// The finished files, available once they are closed — after `stop()`, or after the system
+    /// ended the stream (display unplugged, user hit the system "stop sharing" control).
+    /// Throws only if not a single frame was recorded. Awaiting it twice returns the same Clip.
     var clip: Clip {
         get async throws(TomaError) {
-            if let finished { return try finished.get() }
-            let outcome = await sink.finished.value
-            let result: Result<Clip, TomaError>
-            if case .failed(let reason) = outcome, !FileManager.default.fileExists(atPath: master.path) {
-                result = .failure(.streamFailed(underlying: reason))
-            } else if let duration = await Self.playableDuration(master) {
-                result = .success(Clip(master: master, duration: duration, region: region))
-            } else {
-                result = .failure(.streamFailed(underlying: "empty file"))
-            }
-            finished = result
-            return try result.get()
+            try await engine.finished.value.get()
         }
     }
 
-    /// The file's duration once it is readable. A failure callback can arrive a moment before the
-    /// writer finishes the file, so this keeps trying for up to 3 s before calling it empty.
-    private static func playableDuration(_ url: URL) async -> Double? {
-        for attempt in 0..<30 {
-            if attempt > 0 { try? await Task.sleep(for: .milliseconds(100)) }
-            if let duration = try? await AVURLAsset(url: url).load(.duration), duration.seconds > 0 {
-                return duration.seconds
-            }
+    /// True when this Mac encodes HEVC in hardware (every Apple silicon Mac, most recent Intel
+    /// ones). Without it, live HEVC would cost real CPU during the recording, so it is derived on save.
+    nonisolated static let hasHardwareHEVC: Bool = {
+        var list: CFArray?
+        guard VTCopyVideoEncoderList(nil, &list) == noErr, let encoders = list as? [[String: Any]] else { return false }
+        return encoders.contains {
+            ($0[kVTVideoEncoderList_CodecType as String] as? UInt32) == kCMVideoCodecType_HEVC
+                && ($0[kVTVideoEncoderList_IsHardwareAccelerated as String] as? Bool) == true
         }
-        return nil
-    }
+    }()
 
     private let stream: SCStream
-    private let output: SCRecordingOutput
-    private let sink: RecordingSink
-    private let master: URL
-    private let region: ScreenRegion
+    private let engine: Engine
     private var stopRequested = false
-    private var finished: Result<Clip, TomaError>?
 
-    private init(stream: SCStream, output: SCRecordingOutput, sink: RecordingSink, master: URL, region: ScreenRegion) {
+    private init(stream: SCStream, engine: Engine) {
         self.stream = stream
-        self.output = output
-        self.sink = sink
-        self.master = master
-        self.region = region
+        self.engine = engine
     }
 }
 
-/// A finished recording, not yet saved anywhere the user can see.
-/// Invariant: `master` is a finalized, playable MP4 in Toma's temp folder; Library consumes it
+/// A finished recording, not yet saved anywhere the user can see. Every file was encoded live
+/// from the captured frames (one generation, no re-encode), tagged sRGB.
+/// Invariant: all files are finalized and playable, in Toma's temp folder; Library consumes them
 /// exactly once (save, copy or discard).
 nonisolated struct Clip: Sendable {
+    /// H.264 MP4 at delivery quality: what the card plays and what "MP4" saves.
     let master: URL
+    /// HEVC MOV at delivery quality, when this Mac encodes HEVC in hardware.
+    let hevc: URL?
+    /// Near-lossless H.264 (quality 0.9): the source for GIFs and any re-encode. Clean input
+    /// matters for GIFs: compression noise reads as change and makes them larger.
+    let source: URL
     /// Seconds.
     let duration: Double
     let region: ScreenRegion
+    /// Audio tracks in each video file (Mac sound, microphone); players often play only the first.
+    let audioTracks: Int
+
+    var files: [URL] { [master, source] + (hevc.map { [$0] } ?? []) }
 }
 
 nonisolated enum Outcome: Sendable {
@@ -203,36 +202,195 @@ nonisolated enum Outcome: Sendable {
     case failed(String)
 }
 
-/// Private bridge from ScreenCaptureKit's delegate callbacks (arbitrary queues) to async.
-private nonisolated final class RecordingSink: NSObject, SCRecordingOutputDelegate, SCStreamDelegate, Sendable {
+/// Receives ScreenCaptureKit's samples on one serial queue and appends them to the live writers.
+/// Frames that don't carry new pixels (SCK's idle and blank status frames) are skipped, so the
+/// files have a variable frame rate: a still screen costs nothing.
+private nonisolated final class Engine: NSObject, SCStreamOutput, SCStreamDelegate, @unchecked Sendable {
+    let queue = DispatchQueue(label: "toma.capture", qos: .userInteractive)
     let started = OneShot<Outcome>()
-    let finished = OneShot<Outcome>()
+    let finished = OneShot<Result<Clip, TomaError>>()
 
-    func recordingOutputDidStartRecording(_ recordingOutput: SCRecordingOutput) {
-        started.resolve(.ok)
+    private let region: ScreenRegion
+    private let master: LiveFile, hevc: LiveFile?, source: LiveFile
+    private var files: [LiveFile] { [master, source] + (hevc.map { [$0] } ?? []) }
+    private let audioTracks: Int
+    // Touched only on `queue`.
+    private var sessionStart: CMTime?
+    private var lastFrame: CMTime = .invalid
+    private var finishing = false
+
+    init(region: ScreenRegion, audio: Preferences.Audio) throws {
+        self.region = region
+        let (width, height) = region.pixelSize
+        let id = UUID().uuidString
+        let sources: [SCStreamOutputType] = switch audio {
+        case .none: []
+        case .system: [.audio]
+        case .systemAndMicrophone: [.audio, .microphone]
+        }
+        audioTracks = sources.count
+        func file(_ name: String, _ codec: AVVideoCodecType, quality: Double) throws -> LiveFile {
+            let ext = codec == .hevc ? "mov" : "mp4"
+            return try LiveFile(url: Library.scratch.appending(path: "\(id)-\(name).\(ext)"), codec: codec,
+                                quality: quality, width: width, height: height, audio: sources)
+        }
+        master = try file("mp4", .h264, quality: 0.65)
+        hevc = Recording.hasHardwareHEVC ? try file("hevc", .hevc, quality: 0.6) : nil
+        source = try file("source", .h264, quality: 0.9)
     }
 
-    func recordingOutput(_ recordingOutput: SCRecordingOutput, didFailWithError error: any Error) {
-        started.resolve(.failed(error.localizedDescription))
-        finished.resolve(.failed(error.localizedDescription))
-    }
-
-    func recordingOutputDidFinishRecording(_ recordingOutput: SCRecordingOutput) {
-        finished.resolve(.ok)
-    }
-
-    /// The system ended the stream (display gone, "stop sharing", permission revoked).
-    /// SCRecordingOutput finalizes on its own; give it a moment, then settle with what exists.
-    func stream(_ stream: SCStream, didStopWithError error: any Error) {
-        started.resolve(.failed(error.localizedDescription))
-        streamEnded()
-    }
-
-    func streamEnded() {
-        DispatchQueue.global().asyncAfter(deadline: .now() + 2) { [finished] in
-            finished.resolve(.ok)
+    func stream(_ stream: SCStream, didOutputSampleBuffer sample: CMSampleBuffer, of type: SCStreamOutputType) {
+        guard !finishing, sample.isValid else { return }
+        switch type {
+        case .screen:
+            guard Self.isNewFrame(sample) else { return }
+            let time = sample.presentationTimeStamp
+            if sessionStart == nil {
+                sessionStart = time
+                for file in files { file.startSession(at: time) }
+                started.resolve(.ok)
+            }
+            guard time > lastFrame || !lastFrame.isValid else { return }
+            lastFrame = time
+            for file in files { file.appendVideo(sample) }
+        case .audio, .microphone:
+            guard let start = sessionStart, sample.presentationTimeStamp >= start else { return }
+            for file in files { file.appendAudio(sample, from: type) }
+        @unknown default:
+            break
         }
     }
+
+    /// The system ended the stream (display gone, "stop sharing", permission revoked): keep what
+    /// was recorded so far.
+    func stream(_ stream: SCStream, didStopWithError error: any Error) {
+        started.resolve(.failed(error.localizedDescription))
+        finish(at: CMClockGetTime(CMClockGetHostTimeClock()))
+    }
+
+    /// Closes every file at `end` (or just after the last frame, if `end` is earlier) and resolves
+    /// `finished`. Idempotent.
+    func finish(at end: CMTime) {
+        queue.async { [self] in
+            guard !finishing else { return }
+            finishing = true
+            guard let start = sessionStart, lastFrame.isValid else {
+                abandon()
+                finished.resolve(.failure(.streamFailed(underlying: "no frames")))
+                return
+            }
+            let afterLast = lastFrame + CMTime(value: 1, timescale: 60)
+            let stop = end.isValid && end > afterLast && (end - lastFrame).seconds < 3600 ? end : afterLast
+            let group = DispatchGroup()
+            for file in files { group.enter(); file.finish(at: stop) { group.leave() } }
+            group.notify(queue: queue) { [self] in
+                guard files.allSatisfy(\.succeeded) else {
+                    abandon()
+                    finished.resolve(.failure(.streamFailed(underlying: "writer failed")))
+                    return
+                }
+                finished.resolve(.success(Clip(master: master.url, hevc: hevc?.url, source: source.url,
+                                               duration: (stop - start).seconds, region: region,
+                                               audioTracks: audioTracks)))
+            }
+        }
+    }
+
+    /// Deletes every file; for starts that failed and recordings without a single frame.
+    func abandon() {
+        for file in files { file.cancel() }
+    }
+
+    private static func isNewFrame(_ sample: CMSampleBuffer) -> Bool {
+        guard sample.imageBuffer != nil,
+              let attachments = CMSampleBufferGetSampleAttachmentsArray(sample, createIfNecessary: false) as? [[SCStreamFrameInfo: Any]],
+              let raw = attachments.first?[.status] as? Int else { return false }
+        return SCFrameStatus(rawValue: raw) == .complete
+    }
+}
+
+/// One file being written live: a hardware video encode of the captured frames plus one AAC
+/// track per audio source. Used only on Engine's queue.
+private nonisolated final class LiveFile {
+    let url: URL
+    private let writer: AVAssetWriter
+    private let video: AVAssetWriterInput
+    private var audio: [SCStreamOutputType: AVAssetWriterInput] = [:]
+    private(set) var succeeded = false
+
+    init(url: URL, codec: AVVideoCodecType, quality: Double, width: Int, height: Int,
+         audio sources: [SCStreamOutputType]) throws {
+        self.url = url
+        writer = try AVAssetWriter(outputURL: url, fileType: codec == .hevc ? .mov : .mp4)
+        var compression: [String: Any] = [
+            AVVideoQualityKey: quality,
+            AVVideoExpectedSourceFrameRateKey: 60,
+            AVVideoMaxKeyFrameIntervalDurationKey: 2,
+        ]
+        if codec == .h264 { compression[AVVideoProfileLevelKey] = AVVideoProfileLevelH264HighAutoLevel }
+        video = AVAssetWriterInput(mediaType: .video, outputSettings: [
+            AVVideoCodecKey: codec,
+            AVVideoWidthKey: width,
+            AVVideoHeightKey: height,
+            AVVideoCompressionPropertiesKey: compression,
+            AVVideoColorPropertiesKey: [
+                AVVideoColorPrimariesKey: AVVideoColorPrimaries_ITU_R_709_2,
+                AVVideoTransferFunctionKey: AVVideoTransferFunction_IEC_sRGB,
+                AVVideoYCbCrMatrixKey: AVVideoYCbCrMatrix_ITU_R_709_2,
+            ],
+        ])
+        video.expectsMediaDataInRealTime = true
+        writer.add(video)
+        for source in sources {
+            let input = AVAssetWriterInput(mediaType: .audio, outputSettings: [
+                AVFormatIDKey: kAudioFormatMPEG4AAC,
+                AVNumberOfChannelsKey: 2,
+                AVSampleRateKey: 48_000,
+                AVEncoderBitRateKey: 128_000,
+            ])
+            input.expectsMediaDataInRealTime = true
+            writer.add(input)
+            audio[source] = input
+        }
+        guard writer.startWriting() else {
+            throw writer.error ?? TomaError.streamFailed(underlying: "writer")
+        }
+    }
+
+    func startSession(at time: CMTime) { writer.startSession(atSourceTime: time) }
+
+    /// Real time: a frame the encoder can't take right now is dropped rather than queued.
+    func appendVideo(_ sample: CMSampleBuffer) {
+        guard writer.status == .writing, video.isReadyForMoreMediaData else { return }
+        video.append(sample)
+    }
+
+    func appendAudio(_ sample: CMSampleBuffer, from source: SCStreamOutputType) {
+        guard writer.status == .writing, let input = audio[source], input.isReadyForMoreMediaData else { return }
+        input.append(sample)
+    }
+
+    func finish(at end: CMTime, done: @escaping @Sendable () -> Void) {
+        guard writer.status == .writing else { done(); return }
+        video.markAsFinished()
+        for input in audio.values { input.markAsFinished() }
+        writer.endSession(atSourceTime: end)
+        let box = UncheckedSendable(self)
+        writer.finishWriting {
+            box.value.succeeded = box.value.writer.status == .completed
+            done()
+        }
+    }
+
+    func cancel() {
+        if writer.status == .writing { writer.cancelWriting() }
+        try? FileManager.default.removeItem(at: url)
+    }
+}
+
+private nonisolated struct UncheckedSendable<T>: @unchecked Sendable {
+    let value: T
+    init(_ value: T) { self.value = value }
 }
 
 /// A value that is set once and awaited any number of times. Resolving twice is a no-op.

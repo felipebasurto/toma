@@ -103,6 +103,45 @@ Requested: choose the folder, more export options, lighter files, better GIFs, f
 - **Recording got cheaper.** The placeholder stream output was removed. A 4 s capture at 60 fps uses 0.13 s of CPU.
 - **Bug found and fixed:** the result card never slid on-screen, because `animator().setFrameOrigin` does not animate on NSWindow. `setFrame(_:display:)` is used now. Windows no longer use `sharingType = .none`: the capture filter already excludes Toma, and that flag also hid the card from screenshots and from Zoom.
 
+## Revision 1.6: encode while recording
+
+Requested: better-looking recordings that save faster, reasoned from first principles. This supersedes the "one SCRecordingOutput master, formats derived on save" decision above.
+
+**Measured first.** A benchmark (deterministic animated content with a frame-number barcode, a lossless BGRA capture of the same region as ground truth, frames matched by barcode; PSNR over RGB, SSIM on luma) found three problems in the 1.5 engine:
+
+1. **Colours were wrong.** SCRecordingOutput converted the sRGB frames to the BT.709 tone curve and tagged them 709. Players that don't colour-manage (Chrome, Slack, Windows) and every GIF (made from that master) showed midtones about 9 % darker: sRGB 137 became 125, exactly sRGB → linear → 709 OETF.
+2. **Two lossy generations.** Master (~5 Mbps H.264) then a quality-0.6 re-encode: each pass adds error.
+3. **Saving cost a full re-encode**, ~150 ms per second of video for MP4/HEVC, and the GIF's sequential `Differ` ran at ~9.5 ms per 1280×720 frame (60 % of GIF time), with parallel encodes blocking it in batches.
+
+It also found that stopping removed the recording output before stopping the stream, which on macOS 26.6 interrupts the stream and often leaves an unfinalized MP4 (fixed in 1.5.1).
+
+**The engine now:** an `SCStreamOutput` feeds every new frame (status `.complete`; idle frames skipped, so files keep a variable frame rate) to three hardware encoders through `AVAssetWriter`, each tagged 709 primaries/matrix with the **IEC sRGB transfer**, so the encoder only converts RGB→YCbCr and never touches the tone curve:
+
+| File | Codec, quality | Role |
+|---|---|---|
+| `master` | H.264 High, 0.65 | the MP4 deliverable; the card plays it |
+| `hevc` | HEVC, 0.6 (only with a hardware HEVC encoder) | the HEVC deliverable |
+| `source` | H.264, 0.9 | near-lossless input for GIF and any re-encode |
+
+Saving MP4/HEVC is a move. With Mac sound and microphone (two tracks), saving mixes the audio and copies the video untouched (~10 ms per second). Files are closed by Toma's own writers at the moment of the stop, so a still screen at the end keeps its length and no system callback is awaited. Three live encoders cost about 7 % of one core on an M4 and dropped no frames even with six.
+
+**Why these numbers.** At quality 1.0 PSNR tops out at 31.8 dB on coloured text: that is the 4:2:0 chroma limit, which only 4:4:4 (poorly supported by players) would lift. H.264 0.65 reaches 31.0 dB at a twelfth of the size, so more bits buy almost nothing. The GIF source is separate because compression noise reads as change: from a 0.9 source GIFs were 27 % smaller and better than from the 0.65 deliverable.
+
+**GIF:** `Differ` is SIMD (eight pixels per step), split across cores by rows, reuses its buffers and updates the reference in place (it used to copy 3.7 MB per frame through copy-on-write): 0.64 ms per frame, 14× faster, verified byte-identical against the old one on 950 frames. Frames at native size are a vImage channel swap of the decoded buffer instead of a Core Image render. Encodes run in a sliding window that overlaps the sequential stage. When GIF is the suggested format, `prepare` starts it while the card is up, and a save that adopts it halfway keeps its progress ring.
+
+**Results** (M4, 1280×720, 60 fps; before → after):
+
+| | Worst case (6 s, everything moving) | Typical (10 s, editor and UI) |
+|---|---|---|
+| Save MP4 | 909 ms → 1 ms | 1276 ms → 2 ms |
+| Save HEVC | 976 ms → 1 ms | 1564 ms → 1 ms |
+| Save GIF (sharp) | 2143 ms → 508 ms | 1986 ms → 384 ms |
+| MP4 PSNR / SSIM | 29.43 / 0.9932 → 30.75 / 0.9966 | 29.71 / 0.9935 → 31.36 / 0.9968 |
+| HEVC PSNR / SSIM | 28.97 / 0.9885 → 30.35 / 0.9942 | 29.31 / 0.9896 → 31.00 / 0.9949 |
+| GIF size | 20.5 MB → 18.2 MB | 5.25 MB → 3.53 MB |
+
+MP4 files are about 8 % larger on calm content (quality 0.65 instead of 0.6): the saved generation was spent on quality. **Remaining floor:** MP4/HEVC saves are now bounded by a file move; the GIF is bounded by per-frame palette and LZW work, which is already parallel.
+
 ## Tradeoffs accepted
 
 - We accept one extra step after every recording (the card) in exchange for never asking anything before recording, and for choosing the format after seeing the clip. Doing nothing still saves the file, so the extra step costs no action.
